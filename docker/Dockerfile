@@ -63,17 +63,24 @@ RUN apt-get update && apt-get install -y \
 # Initialize rosdep
 RUN rosdep init || true
 
-# Install Python dependencies for vision
-RUN pip3 install --break-system-packages --no-cache-dir \
-    opencv-python-headless \
-    numpy \
-    ultralytics \
-    onnxruntime
+# Pin setuptools to a version compatible with ROS 2 colcon build system
+# Versions 81+ break editable installs for ament_python packages
+RUN pip3 install --break-system-packages --no-cache-dir "setuptools<81"
+
+# Optional: ML dependencies for YOLO detection (heuristic detector works without these)
+# Commenting out to avoid dependency conflicts - uncomment if you need YOLO
+# RUN pip3 install --break-system-packages --no-cache-dir ultralytics onnxruntime
 
 # Create non-root user with matching UID/GID
-RUN groupadd --gid ${HOST_GID} ros \
-    && useradd --uid ${HOST_UID} --gid ${HOST_GID} -m ros \
-    && echo "ros ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/ros
+# Handle case where GID/UID might already exist in base image
+RUN if ! getent group ros > /dev/null 2>&1; then \
+        groupadd --gid ${HOST_GID} ros 2>/dev/null || groupadd ros; \
+    fi \
+    && if ! getent passwd ros > /dev/null 2>&1; then \
+        useradd --uid ${HOST_UID} --gid ros -m -s /bin/bash ros 2>/dev/null || useradd --gid ros -m -s /bin/bash ros; \
+    fi \
+    && echo "ros ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/ros \
+    && chmod 0440 /etc/sudoers.d/ros
 
 # Setup user environment
 USER ros
@@ -81,9 +88,6 @@ WORKDIR /home/ros
 
 # Update rosdep as user
 RUN rosdep update
-
-# Create workspace directory
-RUN mkdir -p /workspaces/380Robot/ros2_ws/src
 
 # Copy entrypoint
 COPY --chown=ros:ros entrypoint.sh /home/ros/entrypoint.sh
@@ -94,7 +98,8 @@ RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc \
     && echo "if [ -f /workspaces/380Robot/ros2_ws/install/setup.bash ]; then source /workspaces/380Robot/ros2_ws/install/setup.bash; fi" >> ~/.bashrc \
     && echo "export RMW_IMPLEMENTATION=rmw_fastrtps_cpp" >> ~/.bashrc
 
-WORKDIR /workspaces/380Robot/ros2_ws
+# Default workdir - will be overridden by docker-compose
+WORKDIR /home/ros
 
 ENTRYPOINT ["/home/ros/entrypoint.sh"]
 CMD ["bash"]

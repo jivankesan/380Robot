@@ -17,7 +17,6 @@ setup(
     maintainer_email='jivan@todo.com',
     description='Python vision nodes for 380Robot',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'line_detector_node = robot_vision_py.line_detector_node:main',
