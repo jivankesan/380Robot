@@ -1,0 +1,44 @@
+services:
+  robot-dev:
+    build:
+      context: ../docker
+      dockerfile: Dockerfile
+      args:
+        ROS_DISTRO: ${ROS_DISTRO:-jazzy}
+        UBUNTU_VERSION: ${UBUNTU_VERSION:-24.04}
+        HOST_UID: ${HOST_UID:-1000}
+        HOST_GID: ${HOST_GID:-1000}
+    image: 380robot:${ROS_DISTRO:-jazzy}
+    container_name: 380robot-dev
+    hostname: robot-dev
+    stdin_open: true
+    tty: true
+
+    # Use host networking on Linux for easy ROS discovery
+    # On macOS/Windows, remove this and use default bridge networking
+    network_mode: host
+
+    volumes:
+      # Bind mount the entire repository
+      - ..:/workspaces/380Robot:cached
+
+    working_dir: /workspaces/380Robot/ros2_ws
+
+    environment:
+      - ROS_DISTRO=${ROS_DISTRO:-jazzy}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}
+      - DISPLAY=${DISPLAY:-}
+
+    # Device passthrough for Linux (camera and serial)
+    # Uncomment as needed - these won't work on macOS/Windows
+    # devices:
+    #   - /dev/video0:/dev/video0
+    #   - /dev/ttyACM0:/dev/ttyACM0
+
+    # For GUI applications on Linux with X11
+    # volumes:
+    #   - /tmp/.X11-unix:/tmp/.X11-unix:rw
+
+    # Keep container running
+    command: bash

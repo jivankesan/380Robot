@@ -1,0 +1,30 @@
+# Hardware interface configuration
+serial_bridge_node:
+  ros__parameters:
+    # Serial port settings
+    serial_port: "/dev/ttyACM0"
+    baudrate: 115200
+
+    # Robot geometry
+    wheel_base_m: 0.15
+    wheel_radius_m: 0.035
+
+    # PWM limits
+    max_pwm: 255
+
+    # Command rate (Hz)
+    cmd_rate_hz: 50.0
+
+    # Watchdog timeout (ms)
+    watchdog_timeout_ms: 250
+
+    # Telemetry parsing
+    telemetry_rate_hz: 20.0
+
+    # Motor calibration (adjust if wheels spin at different rates)
+    left_motor_gain: 1.0
+    right_motor_gain: 1.0
+
+    # Reverse motor direction if needed
+    left_motor_reversed: false
+    right_motor_reversed: false

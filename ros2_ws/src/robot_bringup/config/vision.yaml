@@ -1,0 +1,56 @@
+# Vision pipeline configuration
+line_detector_node:
+  ros__parameters:
+    # ROI settings (fraction of image)
+    roi_y_start: 0.5          # Start from middle of image
+    roi_y_end: 1.0            # To bottom
+    roi_x_start: 0.1          # Slight margin on sides
+    roi_x_end: 0.9
+
+    # Line detection thresholds (HSV for black line on white floor)
+    line_h_min: 0
+    line_h_max: 180
+    line_s_min: 0
+    line_s_max: 50
+    line_v_min: 0
+    line_v_max: 80
+
+    # Morphology kernel size
+    morph_kernel_size: 5
+
+    # Minimum contour area (pixels)
+    min_contour_area: 500
+
+    # Calibration: pixels to meters
+    pixels_to_m_scale: 0.001
+
+    # Debug visualization
+    publish_debug_image: true
+
+object_detector_node:
+  ros__parameters:
+    # Detection type: "heuristic" or "yolo"
+    detector_type: "heuristic"
+
+    # Target class to detect
+    target_class: "lego_person"
+
+    # Confidence threshold
+    confidence_threshold: 0.5
+
+    # Heuristic detector settings (for LEGO person - typically yellow/red)
+    heuristic_h_min: 15
+    heuristic_h_max: 35
+    heuristic_s_min: 100
+    heuristic_s_max: 255
+    heuristic_v_min: 100
+    heuristic_v_max: 255
+    heuristic_min_area: 200
+    heuristic_max_area: 50000
+
+    # YOLO settings (if using yolo detector)
+    model_path: ""
+    device: "cpu"
+
+    # Rate limiting
+    detection_rate_hz: 10.0

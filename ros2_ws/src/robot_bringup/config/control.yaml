@@ -1,0 +1,58 @@
+# Controller configuration
+line_follow_controller_node:
+  ros__parameters:
+    # Control rate
+    control_rate_hz: 50.0
+
+    # PD gains for lateral error
+    kp_lateral: 2.0
+    kd_lateral: 0.1
+
+    # PD gains for heading error
+    kp_heading: 1.5
+    kd_heading: 0.05
+
+    # Speed limits (m/s)
+    base_speed_mps: 0.3
+    max_lin_vel_mps: 0.5
+    min_lin_vel_mps: 0.1
+
+    # Angular velocity limits (rad/s)
+    max_ang_vel_rps: 1.5
+
+    # Lost line timeout (seconds)
+    lost_line_timeout_s: 2.0
+
+speed_profile_node:
+  ros__parameters:
+    # Speed limits
+    v_max: 0.5
+    v_min: 0.1
+
+    # Acceleration limits (m/s^2)
+    a_max: 0.5
+
+    # Angular acceleration limit (rad/s^2)
+    alpha_max: 2.0
+
+    # Slowdown gains based on path geometry
+    curvature_slowdown_gain: 0.3
+    error_slowdown_gain: 0.5
+    heading_slowdown_gain: 0.2
+
+    # Control rate
+    rate_hz: 50.0
+
+safety_stop_node:
+  ros__parameters:
+    # Watchdog timeout for command velocity (seconds)
+    cmd_vel_timeout_s: 0.5
+
+    # Watchdog timeout for hardware status (seconds)
+    hw_status_timeout_s: 1.0
+
+    # Minimum battery voltage threshold
+    min_battery_v: 10.0
+
+    # Rate to publish safety status
+    rate_hz: 20.0

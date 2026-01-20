@@ -1,0 +1,8 @@
+# Set the operating mode of the robot
+
+# Request: mode name (AUTO, TELEOP, STOP)
+string mode
+---
+# Response
+bool ok
+string message

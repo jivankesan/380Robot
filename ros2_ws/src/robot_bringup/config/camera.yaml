@@ -1,0 +1,9 @@
+# Camera configuration
+camera_node:
+  ros__parameters:
+    video_device: "/dev/video0"
+    image_size: [640, 480]
+    framerate: 30.0
+    camera_frame_id: "camera_link"
+    camera_info_url: ""
+    pixel_format: "YUYV"

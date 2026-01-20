@@ -1,0 +1,8 @@
+# Root-level docker-compose that includes the main compose file
+# This allows running 'docker compose up' from the repo root
+
+services:
+  robot-dev:
+    extends:
+      file: compose/docker-compose.yml
+      service: robot-dev

@@ -1,0 +1,37 @@
+# Task FSM configuration
+task_fsm_node:
+  ros__parameters:
+    # Target object settings
+    target_class: "lego_person"
+    detection_confidence_threshold: 0.5
+
+    # Detection stability (frames before transition)
+    detection_stability_frames: 5
+
+    # Target centering tolerance (normalized, 0-1 from center)
+    target_center_tolerance_x: 0.15
+    target_center_tolerance_y: 0.2
+
+    # Target size threshold for "close enough" (normalized)
+    target_size_close_threshold: 0.25
+
+    # Pickup timing (seconds)
+    pickup_close_time_s: 1.0
+    pickup_hold_time_s: 0.5
+
+    # Drop timing (seconds)
+    drop_open_time_s: 1.0
+
+    # Return detection (for drop zone)
+    drop_zone_marker_class: "drop_zone"
+    use_time_based_return: true
+    return_time_s: 10.0
+
+    # Line loss handling
+    line_loss_timeout_s: 3.0
+
+    # State machine rate
+    rate_hz: 20.0
+
+    # Initial state
+    initial_state: "INIT"
