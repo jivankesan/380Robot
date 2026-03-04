@@ -2,26 +2,32 @@
 line_detector_node:
   ros__parameters:
     # ROI settings (fraction of image)
-    roi_y_start: 0.5          # Start from middle of image
-    roi_y_end: 1.0            # To bottom
-    roi_x_start: 0.1          # Slight margin on sides
+    roi_y_start: 0.5
+    roi_y_end: 1.0
+    roi_x_start: 0.1
     roi_x_end: 0.9
 
-    # Line detection thresholds (HSV for black line on white floor)
+    # HSV range 1 - lower red (validated with actual camera + tape)
     line_h_min: 0
-    line_h_max: 180
-    line_s_min: 0
-    line_s_max: 50
-    line_v_min: 0
-    line_v_max: 80
+    line_h_max: 10
+    line_s_min: 100
+    line_s_max: 255
+    line_v_min: 100
+    line_v_max: 255
+    # HSV range 2 - upper red (wrap-around)
+    line_h2_min: 160
+    line_h2_max: 180
 
-    # Morphology kernel size
-    morph_kernel_size: 5
+    # Canny edge detection
+    canny_low: 50
+    canny_high: 150
 
-    # Minimum contour area (pixels)
-    min_contour_area: 500
+    # HoughLinesP
+    hough_threshold: 50
+    hough_min_line_length: 50
+    hough_max_line_gap: 10
 
-    # Calibration: pixels to meters
+    # Calibration: pixels to meters for lateral error
     pixels_to_m_scale: 0.001
 
     # Debug visualization
