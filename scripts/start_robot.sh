@@ -24,16 +24,12 @@ cd "$REPO_DIR/compose"
 docker rm -f 380robot-dev 2>/dev/null || true
 docker compose up -d
 
-# Build the ROS workspace inside the container
-echo -e "${YELLOW}Building ROS workspace...${NC}"
-docker exec 380robot-dev bash -c "
-  cd /workspaces/380Robot/ros2_ws && \
-  colcon build --symlink-install 2>&1 | tail -5
-"
-
-# Launch the robot
-echo -e "${GREEN}Launching robot...${NC}"
+# Build and launch inside the container
+echo -e "${YELLOW}Building ROS workspace and launching robot...${NC}"
 docker exec -it 380robot-dev bash -c "
-  source /workspaces/380Robot/ros2_ws/install/setup.bash && \
+  source /opt/ros/jazzy/setup.bash && \
+  cd /workspaces/380Robot/ros2_ws && \
+  sudo colcon build --symlink-install && \
+  source install/setup.bash && \
   ros2 launch robot_bringup bringup_real.launch.py
 "
