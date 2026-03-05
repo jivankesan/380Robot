@@ -15,29 +15,23 @@
 
 #include <Servo.h>
 
-// Pin definitions - adjust for your wiring
-// Motor driver pins (L298N or similar)
-const int LEFT_MOTOR_EN = 5;   // PWM pin for left motor enable
-const int LEFT_MOTOR_IN1 = 22; // Direction pin 1
-const int LEFT_MOTOR_IN2 = 23; // Direction pin 2
-const int RIGHT_MOTOR_EN = 6;  // PWM pin for right motor enable
-const int RIGHT_MOTOR_IN1 = 24;
-const int RIGHT_MOTOR_IN2 = 25;
+// Pin definitions for Elegoo Smart Car Shield (TB6612 driver)
+const int LEFT_MOTOR_EN = 6;    // PWMB
+const int LEFT_MOTOR_IN1 = 7;   // BIN1
+const int LEFT_MOTOR_IN2 = 8;   // BIN2
+const int RIGHT_MOTOR_EN = 5;   // PWMA
+const int RIGHT_MOTOR_IN1 = 12; // AIN1
+const int RIGHT_MOTOR_IN2 = 13; // AIN2
+const int MOTOR_STBY = 3;       // Standby - must be HIGH to enable motors
 
 // Claw servo pin
 const int CLAW_SERVO_PIN = 9;
 
-// Encoder pins (optional)
-const int LEFT_ENC_A = 2;  // Interrupt pin
-const int LEFT_ENC_B = 3;
-const int RIGHT_ENC_A = 18; // Interrupt pin
-const int RIGHT_ENC_B = 19;
-
 // Battery voltage divider pin (analog)
 const int BATTERY_PIN = A0;
 
-// E-stop button pin
-const int ESTOP_PIN = 52;
+// E-stop not used on Uno (pin 52 is Mega-only)
+const int ESTOP_PIN = -1;
 
 // Claw servo positions
 const int CLAW_OPEN_POS = 30;
@@ -51,8 +45,6 @@ const unsigned long TELEMETRY_PERIOD = 50;
 
 // Global state
 Servo clawServo;
-volatile long leftEncoderCount = 0;
-volatile long rightEncoderCount = 0;
 int currentLeftPWM = 0;
 int currentRightPWM = 0;
 int currentClawMode = 0;
@@ -65,17 +57,18 @@ String inputBuffer = "";
 void setup() {
   // Initialize serial
   Serial.begin(115200);
-  while (!Serial) {
-    ; // Wait for serial connection
-  }
 
   // Motor pins
+  pinMode(MOTOR_STBY, OUTPUT);
   pinMode(LEFT_MOTOR_EN, OUTPUT);
   pinMode(LEFT_MOTOR_IN1, OUTPUT);
   pinMode(LEFT_MOTOR_IN2, OUTPUT);
   pinMode(RIGHT_MOTOR_EN, OUTPUT);
   pinMode(RIGHT_MOTOR_IN1, OUTPUT);
   pinMode(RIGHT_MOTOR_IN2, OUTPUT);
+
+  // Enable TB6612 (take out of standby)
+  digitalWrite(MOTOR_STBY, HIGH);
 
   // Stop motors initially
   stopMotors();
@@ -84,18 +77,10 @@ void setup() {
   clawServo.attach(CLAW_SERVO_PIN);
   clawServo.write(CLAW_OPEN_POS);
 
-  // Encoder pins with pullup
-  pinMode(LEFT_ENC_A, INPUT_PULLUP);
-  pinMode(LEFT_ENC_B, INPUT_PULLUP);
-  pinMode(RIGHT_ENC_A, INPUT_PULLUP);
-  pinMode(RIGHT_ENC_B, INPUT_PULLUP);
+  // Encoders not used with Elegoo Smart Car Shield
+  // (encoder pins conflict with motor driver pins on this shield)
 
-  // Attach encoder interrupts
-  attachInterrupt(digitalPinToInterrupt(LEFT_ENC_A), leftEncoderISR, RISING);
-  attachInterrupt(digitalPinToInterrupt(RIGHT_ENC_A), rightEncoderISR, RISING);
-
-  // E-stop pin
-  pinMode(ESTOP_PIN, INPUT_PULLUP);
+  // E-stop not used
 
   // Battery monitoring
   pinMode(BATTERY_PIN, INPUT);
@@ -118,8 +103,8 @@ void loop() {
     }
   }
 
-  // Check E-stop
-  estopActive = (digitalRead(ESTOP_PIN) == LOW);
+  // E-stop not used on Uno
+  estopActive = false;
 
   // Watchdog - stop motors if no commands received
   unsigned long now = millis();
@@ -264,27 +249,7 @@ void sendTelemetry() {
   // Format: T,<battery_mv>,<left_enc>,<right_enc>,<estop>
   Serial.print("T,");
   Serial.print(batteryMV);
-  Serial.print(",");
-  Serial.print(leftEncoderCount);
-  Serial.print(",");
-  Serial.print(rightEncoderCount);
-  Serial.print(",");
+  Serial.print(",0,0,");
   Serial.println(estopActive ? "1" : "0");
 }
 
-// Encoder interrupt handlers
-void leftEncoderISR() {
-  if (digitalRead(LEFT_ENC_B) == HIGH) {
-    leftEncoderCount++;
-  } else {
-    leftEncoderCount--;
-  }
-}
-
-void rightEncoderISR() {
-  if (digitalRead(RIGHT_ENC_B) == HIGH) {
-    rightEncoderCount++;
-  } else {
-    rightEncoderCount--;
-  }
-}

@@ -2,7 +2,7 @@
 serial_bridge_node:
   ros__parameters:
     # Serial port settings
-    serial_port: "/dev/ttyACM0"
+    serial_port: "/dev/ttyUSB0"
     baudrate: 115200
 
     # Robot geometry
