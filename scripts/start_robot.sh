@@ -18,11 +18,14 @@ echo -e "${YELLOW}Setting device permissions...${NC}"
 sudo chmod 666 /dev/ttyUSB0 2>/dev/null || echo "Warning: /dev/ttyUSB0 not found"
 sudo chmod 666 /dev/video0  2>/dev/null || echo "Warning: /dev/video0 not found"
 
-# Start or restart the container
+# Start the container if not already running
 echo -e "${YELLOW}Starting Docker container...${NC}"
 cd "$REPO_DIR/compose"
-docker rm -f 380robot-dev 2>/dev/null || true
-docker compose up -d
+if [ "$(docker inspect -f '{{.State.Running}}' 380robot-dev 2>/dev/null)" != "true" ]; then
+  docker compose up -d
+else
+  echo "Container already running."
+fi
 
 # Build and launch inside the container
 echo -e "${YELLOW}Building ROS workspace and launching robot...${NC}"
