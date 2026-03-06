@@ -10,7 +10,7 @@ serial_bridge_node:
     wheel_radius_m: 0.035
 
     # PWM limits
-    max_pwm: 255
+    max_pwm: 100
 
     # Command rate (Hz)
     cmd_rate_hz: 50.0
@@ -21,9 +21,16 @@ serial_bridge_node:
     # Telemetry parsing
     telemetry_rate_hz: 20.0
 
-    # Motor calibration (adjust if wheels spin at different rates)
+    # Motor calibration: reduce the gain of the FASTER wheel until both spin
+    # at the same rate on a straight command. Typical range: 0.80 - 1.0.
+    # Example: if the left wheel is faster, set left_motor_gain to ~0.85.
     left_motor_gain: 1.0
     right_motor_gain: 1.0
+
+    # Minimum PWM to actually move the motors (overcome stiction/deadband).
+    # Any non-zero command below this value gets bumped up to this threshold.
+    # Increase if motors stall on turns; decrease if you get jerky low-speed motion.
+    min_motor_pwm: 80
 
     # Reverse motor direction if needed
     left_motor_reversed: false
