@@ -92,6 +92,13 @@ def main():
     time.sleep(2.0)
 
     try:
+        # ── Reset servos to start position (open + level) ───────────────────
+        print('\n>>> Resetting servos to start position...')
+        servo(fd, 1, 135, 'level')
+        time.sleep(0.5)
+        servo(fd, 2, 90,  'open')
+        time.sleep(1.0)
+
         # ── Mobility demo ───────────────────────────────────────────────────
         drive(fd, FORWARD_PWM, FORWARD_PWM, FORWARD_DURATION)
         print(f'Pausing {PAUSE_DURATION:.1f}s...')
@@ -108,10 +115,10 @@ def main():
         servo(fd, 2, 135, 'close')
         time.sleep(CLAW_STEP_DELAY)
 
-        servo(fd, 1, 135, 'tilt')
+        servo(fd, 1, 150, 'tilt')
         time.sleep(CLAW_STEP_DELAY)
 
-        servo(fd, 1, 150, 'level')
+        servo(fd, 1, 135, 'level')
         time.sleep(CLAW_STEP_DELAY)
 
         servo(fd, 2, 90,  'open')
