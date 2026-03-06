@@ -1,133 +1,127 @@
 #!/usr/bin/env python3
-"""Autonomous demo node for 380Robot assessment.
+"""Autonomous demo script for 380Robot assessment.
+
+Talks directly to the Arduino over serial — no ROS serial bridge needed.
 
 Sequence:
-  1. Move forward  (FORWARD_DURATION seconds)
-  2. Stop          (PAUSE_DURATION seconds)
-  3. Move backward (BACKWARD_DURATION seconds)
-  4. Stop          (PAUSE_DURATION seconds)
-  5. Open claw     (CLAW_HOLD seconds)
-  6. Close claw
-  7. Shutdown
+  1. Forward  (FORWARD_DURATION seconds)
+  2. Stop + pause
+  3. Backward (BACKWARD_DURATION seconds)
+  4. Stop + pause
+  5. Claw open   (servo2 = 90)
+  6. Claw close  (servo2 = 135)
+  7. Tilt        (servo1 = 135)
+  8. Level       (servo1 = 150)
+  9. Claw open   (servo2 = 90)
 
-Run after bringup_real is already up:
-  python3 /workspaces/380Robot/scripts/demo.py
+Run via:  ./scripts/run_demo.sh
 """
 
+import os
+import termios
 import time
 
-import rclpy
-from geometry_msgs.msg import Twist
-from rclpy.node import Node
+# ── Tune these ───────────────────────────────────────────────────────────────
+SERIAL_PORT      = '/dev/ttyUSB0'
+BAUD_RATE        = 115200
 
-from robot_interfaces.msg import ClawCommand
+FORWARD_PWM      =  218   # out of 255  (~0.3 m/s)
+BACKWARD_PWM     = -218
 
-# ── Tune these for your physical setup ──────────────────────────────────────
-FORWARD_SPEED   =  0.3   # m/s
-BACKWARD_SPEED  = -0.3   # m/s
-FORWARD_DURATION  = 2.0  # seconds
-BACKWARD_DURATION = 2.0  # seconds
-PAUSE_DURATION    = 1.0  # seconds between moves
-CLAW_HOLD         = 2.0  # seconds to hold claw open
-# ────────────────────────────────────────────────────────────────────────────
-
-CMD_TOPIC  = '/control/cmd_vel_limited'
-CLAW_TOPIC = '/claw/cmd'
+FORWARD_DURATION  = 2.0   # seconds
+BACKWARD_DURATION = 2.0
+PAUSE_DURATION    = 1.0
+CLAW_STEP_DELAY   = 1.5   # seconds between claw steps
+# ─────────────────────────────────────────────────────────────────────────────
 
 
-class DemoNode(Node):
-    def __init__(self):
-        super().__init__('demo_node')
-        self.cmd_pub  = self.create_publisher(Twist,       CMD_TOPIC,  10)
-        self.claw_pub = self.create_publisher(ClawCommand, CLAW_TOPIC, 10)
+def open_serial(port, baud):
+    fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+    tty = termios.tcgetattr(fd)
 
-    def drive(self, linear: float, duration: float):
-        """Publish a constant velocity for `duration` seconds, then stop."""
-        twist = Twist()
-        twist.linear.x = linear
-
-        direction = 'FORWARD' if linear > 0 else 'BACKWARD'
-        self.get_logger().info(
-            f'[DRIVE] {direction} | linear.x={linear:+.3f} m/s | duration={duration:.1f}s'
-        )
-        print(f'\n>>> {direction}: sending linear.x={linear:+.3f} m/s to {CMD_TOPIC}')
-
-        end = time.time() + duration
-        tick = 0
-        while time.time() < end:
-            self.cmd_pub.publish(twist)
-            remaining = end - time.time()
-            if tick % 20 == 0:  # print once per second
-                print(f'    cmd_vel -> linear.x={linear:+.3f}  angular.z=0.000  ({remaining:.1f}s remaining)')
-            tick += 1
-            time.sleep(0.05)  # 20 Hz
-
-        # Stop
-        twist.linear.x = 0.0
-        self.cmd_pub.publish(twist)
-        self.get_logger().info(f'[DRIVE] STOP | linear.x=0.000 m/s')
-        print(f'    cmd_vel -> linear.x= 0.000  angular.z=0.000  (stopped)\n')
-
-    def claw(self, open_: bool):
-        msg = ClawCommand()
-        if open_:
-            msg.mode = ClawCommand.MODE_OPEN
-            msg.position = 0.0
-            self.get_logger().info('[CLAW] OPEN | mode=MODE_OPEN position=0.0')
-            print(f'>>> CLAW OPEN: sending mode=MODE_OPEN position=0.0 to {CLAW_TOPIC}')
-        else:
-            msg.mode = ClawCommand.MODE_CLOSE
-            msg.position = 1.0
-            self.get_logger().info('[CLAW] CLOSE | mode=MODE_CLOSE position=1.0')
-            print(f'>>> CLAW CLOSE: sending mode=MODE_CLOSE position=1.0 to {CLAW_TOPIC}')
-        self.claw_pub.publish(msg)
-
-    def run(self):
-        print('\n======== 380Robot Demo Start ========')
-        print(f'  CMD topic:  {CMD_TOPIC}')
-        print(f'  CLAW topic: {CLAW_TOPIC}')
-        print(f'  Forward:  {FORWARD_SPEED:+.2f} m/s x {FORWARD_DURATION:.1f}s')
-        print(f'  Backward: {BACKWARD_SPEED:+.2f} m/s x {BACKWARD_DURATION:.1f}s')
-        print(f'  Claw hold: {CLAW_HOLD:.1f}s')
-        print('=====================================\n')
-
-        # Give the system a moment to settle
-        print('Waiting 1s for system to settle...')
-        time.sleep(1.0)
-
-        # 1. Forward
-        self.drive(FORWARD_SPEED, FORWARD_DURATION)
-        print(f'Pausing {PAUSE_DURATION:.1f}s...')
-        time.sleep(PAUSE_DURATION)
-
-        # 2. Backward
-        self.drive(BACKWARD_SPEED, BACKWARD_DURATION)
-        print(f'Pausing {PAUSE_DURATION:.1f}s...')
-        time.sleep(PAUSE_DURATION)
-
-        # 3. Claw open → hold → close
-        self.claw(open_=True)
-        print(f'Holding claw open for {CLAW_HOLD:.1f}s...')
-        time.sleep(CLAW_HOLD)
-        self.claw(open_=False)
-        time.sleep(1.0)
-
-        print('\n======== Demo Complete ========\n')
-        self.get_logger().info('Demo complete.')
+    # Raw mode, 8N1
+    tty[0] = 0   # iflag
+    tty[1] = 0   # oflag
+    tty[2] = termios.CS8 | termios.CREAD | termios.CLOCAL  # cflag
+    tty[3] = 0   # lflag
+    tty[4] = termios.B115200
+    tty[5] = termios.B115200
+    tty[6][termios.VMIN]  = 0
+    tty[6][termios.VTIME] = 1
+    termios.tcsetattr(fd, termios.TCSANOW, tty)
+    return fd
 
 
-def main(args=None):
-    rclpy.init(args=args)
-    node = DemoNode()
+def send(fd, cmd: str):
+    msg = (cmd + '\n').encode()
+    os.write(fd, msg)
+    print(f'  >> {cmd}')
+
+
+def drive(fd, pwm_left, pwm_right, duration):
+    direction = 'FORWARD' if pwm_left > 0 else 'BACKWARD'
+    print(f'\n>>> {direction}: PWM={pwm_left} for {duration:.1f}s')
+    end = time.time() + duration
+    tick = 0
+    while time.time() < end:
+        send(fd, f'M,{pwm_left},{pwm_right}')
+        remaining = end - time.time()
+        if tick % 4 == 0:
+            print(f'    {remaining:.1f}s remaining')
+        tick += 1
+        time.sleep(0.05)  # 20 Hz
+
+    send(fd, 'M,0,0')
+    print('    stopped')
+
+
+def servo(fd, num, angle, label=''):
+    print(f'\n>>> SERVO {num} -> {angle}  {label}')
+    send(fd, f'S,{num},{angle}')
+
+
+def main():
+    print('\n======== 380Robot Demo Start ========')
+    print(f'  Port:     {SERIAL_PORT} @ {BAUD_RATE}')
+    print(f'  Forward:  PWM={FORWARD_PWM} x {FORWARD_DURATION:.1f}s')
+    print(f'  Backward: PWM={BACKWARD_PWM} x {BACKWARD_DURATION:.1f}s')
+    print('=====================================\n')
+
+    fd = open_serial(SERIAL_PORT, BAUD_RATE)
+    print('Serial port open. Waiting 2s for Arduino to boot...')
+    time.sleep(2.0)
+
     try:
-        node.run()
-    except KeyboardInterrupt:
-        pass
+        # ── Mobility demo ───────────────────────────────────────────────────
+        drive(fd, FORWARD_PWM, FORWARD_PWM, FORWARD_DURATION)
+        print(f'Pausing {PAUSE_DURATION:.1f}s...')
+        time.sleep(PAUSE_DURATION)
+
+        drive(fd, BACKWARD_PWM, BACKWARD_PWM, BACKWARD_DURATION)
+        print(f'Pausing {PAUSE_DURATION:.1f}s...')
+        time.sleep(PAUSE_DURATION)
+
+        # ── Claw demo ───────────────────────────────────────────────────────
+        servo(fd, 2, 90,  'open')
+        time.sleep(CLAW_STEP_DELAY)
+
+        servo(fd, 2, 135, 'close')
+        time.sleep(CLAW_STEP_DELAY)
+
+        servo(fd, 1, 135, 'tilt')
+        time.sleep(CLAW_STEP_DELAY)
+
+        servo(fd, 1, 150, 'level')
+        time.sleep(CLAW_STEP_DELAY)
+
+        servo(fd, 2, 90,  'open')
+        time.sleep(CLAW_STEP_DELAY)
+
     finally:
-        # Safety stop
-        node.cmd_pub.publish(Twist())
-        node.destroy_node()
-        rclpy.shutdown()
+        send(fd, 'M,0,0')
+        os.close(fd)
+
+    print('\n======== Demo Complete ========\n')
 
 
 if __name__ == '__main__':

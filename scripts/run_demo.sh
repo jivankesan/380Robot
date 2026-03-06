@@ -27,15 +27,12 @@ echo "============="
 # Fix device permissions
 sudo chmod 666 /dev/ttyUSB0 2>/dev/null || echo "Warning: /dev/ttyUSB0 not found"
 
-# Start container if not running
+# Restart container so devices are freshly mounted
+echo -e "${YELLOW}Starting Docker container...${NC}"
 cd "$REPO_DIR/compose"
-if [ "$(docker inspect -f '{{.State.Running}}' 380robot-dev 2>/dev/null)" != "true" ]; then
-    echo -e "${YELLOW}Starting Docker container...${NC}"
-    docker compose up -d
-    sleep 3
-else
-    echo "Container already running."
-fi
+docker compose down 2>/dev/null || true
+docker compose up -d
+sleep 3
 
 echo -e "${YELLOW}Building ROS workspace...${NC}"
 docker exec 380robot-dev bash -c "
@@ -44,24 +41,8 @@ docker exec 380robot-dev bash -c "
     sudo colcon build --symlink-install
 "
 
-echo -e "${YELLOW}Starting serial bridge (hardware only, no line follower)...${NC}"
-docker exec -d 380robot-dev bash -c "
-    source /opt/ros/jazzy/setup.bash && \
-    cd /workspaces/380Robot/ros2_ws && \
-    source install/setup.bash && \
-    ros2 run robot_hw_cpp serial_bridge_node \
-    --ros-args --params-file /workspaces/380Robot/ros2_ws/install/robot_bringup/share/robot_bringup/config/hw.yaml \
-    > /tmp/serial_bridge.log 2>&1
-"
-
-echo -e "${YELLOW}Waiting 4s for serial bridge to come up...${NC}"
-sleep 4
-
 echo -e "${YELLOW}Running autonomous demo (forward / backward / claw)...${NC}"
 docker exec -it 380robot-dev bash -c "
-    source /opt/ros/jazzy/setup.bash && \
-    cd /workspaces/380Robot/ros2_ws && \
-    source install/setup.bash && \
     python3 /workspaces/380Robot/scripts/demo.py
 "
 
