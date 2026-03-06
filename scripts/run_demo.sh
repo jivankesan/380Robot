@@ -41,7 +41,7 @@ echo -e "${YELLOW}Building ROS workspace...${NC}"
 docker exec 380robot-dev bash -c "
     source /opt/ros/jazzy/setup.bash && \
     cd /workspaces/380Robot/ros2_ws && \
-    colcon build --symlink-install --quiet
+    sudo colcon build --symlink-install
 "
 
 echo -e "${YELLOW}Starting bringup_real in background...${NC}"
