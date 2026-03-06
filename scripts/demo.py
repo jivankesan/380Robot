@@ -53,7 +53,6 @@ class DemoNode(Node):
         print(f'\n>>> {direction}: sending linear.x={linear:+.3f} m/s to {CMD_TOPIC}')
 
         end = time.time() + duration
-        rate = self.create_rate(20)  # 20 Hz publish loop
         tick = 0
         while time.time() < end:
             self.cmd_pub.publish(twist)
@@ -61,7 +60,7 @@ class DemoNode(Node):
             if tick % 20 == 0:  # print once per second
                 print(f'    cmd_vel -> linear.x={linear:+.3f}  angular.z=0.000  ({remaining:.1f}s remaining)')
             tick += 1
-            rate.sleep()
+            time.sleep(0.05)  # 20 Hz
 
         # Stop
         twist.linear.x = 0.0
