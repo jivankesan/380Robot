@@ -25,8 +25,8 @@ import time
 SERIAL_PORT      = '/dev/ttyUSB0'
 BAUD_RATE        = 115200
 
-FORWARD_PWM      =  218   # out of 255  (~0.3 m/s)
-BACKWARD_PWM     = -218
+FORWARD_PWM      =  100   # out of 255  (~0.3 m/s)
+BACKWARD_PWM     = -100
 
 FORWARD_DURATION  = 2.0   # seconds
 BACKWARD_DURATION = 2.0
