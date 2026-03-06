@@ -5,20 +5,20 @@ line_follow_controller_node:
     control_rate_hz: 50.0
 
     # PD gains for lateral error
-    kp_lateral: 2.0
-    kd_lateral: 0.1
+    kp_lateral: 4.0
+    kd_lateral: 0.2
 
     # PD gains for heading error
-    kp_heading: 1.5
-    kd_heading: 0.05
+    kp_heading: 3.0
+    kd_heading: 0.1
 
     # Speed limits (m/s)
-    base_speed_mps: 0.3
-    max_lin_vel_mps: 0.5
-    min_lin_vel_mps: 0.1
+    base_speed_mps: 0.2
+    max_lin_vel_mps: 0.3
+    min_lin_vel_mps: 0.05
 
     # Angular velocity limits (rad/s)
-    max_ang_vel_rps: 1.5
+    max_ang_vel_rps: 2.0
 
     # Lost line timeout (seconds)
     lost_line_timeout_s: 2.0
@@ -51,8 +51,8 @@ safety_stop_node:
     # Watchdog timeout for hardware status (seconds)
     hw_status_timeout_s: 1.0
 
-    # Minimum battery voltage threshold
-    min_battery_v: 10.0
+    # Minimum battery voltage threshold (0 = disabled, no voltage divider wired)
+    min_battery_v: 0.0
 
     # Rate to publish safety status
     rate_hz: 20.0
