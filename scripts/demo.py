@@ -94,7 +94,7 @@ def main():
     try:
         # ── Reset servos to start position (open + level) ───────────────────
         print('\n>>> Resetting servos to start position...')
-        servo(fd, 1, 135, 'level')
+        servo(fd, 1, 150, 'level')
         time.sleep(0.5)
         servo(fd, 2, 90,  'open')
         time.sleep(1.0)
@@ -112,13 +112,13 @@ def main():
         servo(fd, 2, 90,  'open')
         time.sleep(CLAW_STEP_DELAY)
 
-        servo(fd, 2, 135, 'close')
+        servo(fd, 2, 150, 'close')
         time.sleep(CLAW_STEP_DELAY)
 
-        servo(fd, 1, 150, 'tilt')
+        servo(fd, 1, 135, 'tilt')
         time.sleep(CLAW_STEP_DELAY)
 
-        servo(fd, 1, 135, 'level')
+        servo(fd, 1, 150, 'level')
         time.sleep(CLAW_STEP_DELAY)
 
         servo(fd, 2, 90,  'open')
