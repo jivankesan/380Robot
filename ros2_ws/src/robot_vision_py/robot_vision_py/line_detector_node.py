@@ -4,8 +4,9 @@
 Detects a red line on the floor using camera input and publishes
 lateral/heading error for the controller.
 
-Detection pipeline (matches validated standalone script):
-  HSV threshold (dual-range for red wrap-around) -> Canny edges -> HoughLinesP
+Detection pipeline:
+  HSV threshold (dual-range for red wrap-around) -> morphological cleanup
+  -> centroid for lateral error -> two-zone centroid for heading error
 """
 
 import cv2
@@ -26,8 +27,8 @@ class LineDetectorNode(Node):
         super().__init__('line_detector_node')
 
         # Declare parameters
-        self.declare_parameter('roi_y_start', 0.5)
-        self.declare_parameter('roi_y_end', 1.0)
+        self.declare_parameter('roi_y_start', 0.50)
+        self.declare_parameter('roi_y_end', 0.85)
         self.declare_parameter('roi_x_start', 0.1)
         self.declare_parameter('roi_x_end', 0.9)
 
@@ -42,14 +43,12 @@ class LineDetectorNode(Node):
         self.declare_parameter('line_h2_min', 160)
         self.declare_parameter('line_h2_max', 180)
 
-        # Canny parameters
-        self.declare_parameter('canny_low', 50)
-        self.declare_parameter('canny_high', 150)
+        # Minimum mask area to consider a valid detection (px^2)
+        self.declare_parameter('min_mask_area_px', 500)
 
-        # HoughLinesP parameters
-        self.declare_parameter('hough_threshold', 50)
-        self.declare_parameter('hough_min_line_length', 50)
-        self.declare_parameter('hough_max_line_gap', 10)
+        # Camera mounting offset: shift the image centre used for lateral error
+        # (positive = camera is mounted left of robot centre, shifts reference right)
+        self.declare_parameter('center_x_offset_px', 0)
 
         # Scale: pixels to meters for lateral error
         self.declare_parameter('pixels_to_m_scale', 0.001)
@@ -68,11 +67,8 @@ class LineDetectorNode(Node):
         self.line_v_max = self.get_parameter('line_v_max').value
         self.line_h2_min = self.get_parameter('line_h2_min').value
         self.line_h2_max = self.get_parameter('line_h2_max').value
-        self.canny_low = self.get_parameter('canny_low').value
-        self.canny_high = self.get_parameter('canny_high').value
-        self.hough_threshold = self.get_parameter('hough_threshold').value
-        self.hough_min_line_length = self.get_parameter('hough_min_line_length').value
-        self.hough_max_line_gap = self.get_parameter('hough_max_line_gap').value
+        self.min_mask_area = self.get_parameter('min_mask_area_px').value
+        self.center_x_offset = self.get_parameter('center_x_offset_px').value
         self.pixels_to_m_scale = self.get_parameter('pixels_to_m_scale').value
         self.publish_debug = self.get_parameter('publish_debug_image').value
 
@@ -104,7 +100,7 @@ class LineDetectorNode(Node):
                 10
             )
 
-        self.get_logger().info('Line detector node initialized (Canny+Hough pipeline)')
+        self.get_logger().info('Line detector node initialized (centroid pipeline)')
 
     def image_callback(self, msg: Image):
         """Process incoming image and detect red line."""
@@ -116,13 +112,13 @@ class LineDetectorNode(Node):
 
         height, width = cv_image.shape[:2]
 
-        # Extract ROI (lower half of image by default)
+        # Extract ROI
         y_start = int(height * self.roi_y_start)
         y_end = int(height * self.roi_y_end)
         x_start = int(width * self.roi_x_start)
         x_end = int(width * self.roi_x_end)
         roi = cv_image[y_start:y_end, x_start:x_end]
-        roi_width = x_end - x_start
+        roi_h, roi_w = roi.shape[:2]
 
         # HSV masking - dual range for red wrap-around
         hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
@@ -135,18 +131,10 @@ class LineDetectorNode(Node):
             cv2.inRange(hsv, lower2, upper2)
         )
 
-        # Isolate red regions, convert to gray, run Canny
-        red_only = cv2.bitwise_and(roi, roi, mask=mask)
-        gray = cv2.cvtColor(red_only, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, self.canny_low, self.canny_high)
-
-        # Hough line detection
-        lines = cv2.HoughLinesP(
-            edges, 1, np.pi / 180,
-            threshold=self.hough_threshold,
-            minLineLength=self.hough_min_line_length,
-            maxLineGap=self.hough_max_line_gap
-        )
+        # Morphological cleanup: close gaps in the line, remove speckles
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
         # Build observation message
         obs = LineObservation()
@@ -156,63 +144,58 @@ class LineDetectorNode(Node):
         obs.heading_error_rad = 0.0
         obs.curvature_1pm = 0.0
 
-        if lines is not None:
-            # Lateral error: average midpoint x of all lines vs ROI centre
-            mid_xs = [(l[0][0] + l[0][2]) / 2.0 for l in lines]
-            avg_mid_x = float(np.mean(mid_xs))
-            lateral_error_px = avg_mid_x - (roi_width / 2.0)
+        M = cv2.moments(mask)
+        total_area = M['m00']
+
+        if total_area >= self.min_mask_area:
+            # --- Lateral error: centroid x vs adjusted image centre ---
+            cx = M['m10'] / total_area
+            # center_x_offset compensates for camera not being centred on robot
+            image_center_x = roi_w / 2.0 + self.center_x_offset
+            lateral_error_px = cx - image_center_x
             obs.lateral_error_m = lateral_error_px * self.pixels_to_m_scale
 
-            # Heading error: average angle of lines from vertical
-            angles = []
-            for line in lines:
-                x1, y1, x2, y2 = line[0]
-                dx = float(x2 - x1)
-                dy = float(y2 - y1)
-                if abs(dy) > 1e-3:
-                    angles.append(np.arctan2(dx, abs(dy)))
-            if angles:
-                obs.heading_error_rad = float(np.mean(angles))
+            # --- Heading error: compare centroids in top vs bottom half of ROI ---
+            mid_y = roi_h // 2
+            top_mask = mask[:mid_y, :]
+            bot_mask = mask[mid_y:, :]
+            M_top = cv2.moments(top_mask)
+            M_bot = cv2.moments(bot_mask)
+
+            if M_top['m00'] > 0 and M_bot['m00'] > 0:
+                cx_top = M_top['m10'] / M_top['m00']
+                cx_bot = M_bot['m10'] / M_bot['m00']
+                # Positive heading = line tilts right (robot needs to turn left)
+                obs.heading_error_rad = float(np.arctan2(cx_top - cx_bot, float(mid_y)))
 
             obs.valid = True
 
             # Debug visualization
             if self.publish_debug:
                 debug_img = cv_image.copy()
+                # Show mask as overlay
+                mask_colored = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+                mask_colored[:, :, 0] = 0  # zero out B and G, keep R-ish
+                mask_colored[:, :, 1] = 0
+                roi_region = debug_img[y_start:y_end, x_start:x_end]
+                cv2.addWeighted(roi_region, 0.6, mask_colored, 0.4, 0, roi_region)
                 # ROI boundary
                 cv2.rectangle(
                     debug_img,
                     (x_start, y_start), (x_end, y_end),
                     (0, 255, 0), 2
                 )
-                # Detected Hough lines (shifted back to full-image coords)
-                for line in lines:
-                    x1, y1, x2, y2 = line[0]
-                    cv2.line(
-                        debug_img,
-                        (x1 + x_start, y1 + y_start),
-                        (x2 + x_start, y2 + y_start),
-                        (0, 255, 0), 2
-                    )
-                # Average midpoint
-                avg_x_full = int(avg_mid_x) + x_start
-                avg_y_full = (y_start + y_end) // 2
-                cv2.circle(debug_img, (avg_x_full, avg_y_full), 10, (255, 0, 0), -1)
-                # Centre reference line
-                cv2.line(
-                    debug_img,
-                    (width // 2, y_start), (width // 2, y_end),
-                    (255, 255, 0), 2
-                )
+                # Centroid dot
+                cx_full = int(cx) + x_start
+                cy_full = int(M['m01'] / total_area) + y_start
+                cv2.circle(debug_img, (cx_full, cy_full), 10, (255, 0, 0), -1)
+                # Adjusted centre reference line
+                ref_x = int(image_center_x) + x_start
+                cv2.line(debug_img, (ref_x, y_start), (ref_x, y_end), (255, 255, 0), 2)
                 cv2.putText(
                     debug_img,
-                    f'Lat: {obs.lateral_error_m:.3f}m',
-                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2
-                )
-                cv2.putText(
-                    debug_img,
-                    f'Hdg: {np.degrees(obs.heading_error_rad):.1f}deg',
-                    (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2
+                    f'Lat: {obs.lateral_error_m:.3f}m  Hdg: {np.degrees(obs.heading_error_rad):.1f}deg',
+                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2
                 )
                 debug_msg = self.bridge.cv2_to_imgmsg(debug_img, 'bgr8')
                 debug_msg.header = msg.header

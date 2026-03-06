@@ -19,11 +19,13 @@ HELP_MSG = """
 380Robot Keyboard Teleop
 ------------------------
 Movement:
-   w
-a  s  d
+   ↑  (or w)
+←  ↓  →  (or a s d)
 
-w/s : forward/backward
-a/d : turn left/right
+↑/w : forward
+↓/s : backward
+←/a : turn left
+→/d : turn right
 space : stop
 
 Claw:
@@ -83,13 +85,23 @@ class TeleopNode(Node):
               f'angular={self.angular_speed:.2f}')
 
     def get_key(self):
-        """Get a single keypress."""
+        """Get a single keypress, including arrow key escape sequences."""
         if not sys.stdin.isatty():
             return None
 
         tty.setraw(sys.stdin.fileno())
-        key = sys.stdin.read(1)
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
+        try:
+            key = sys.stdin.read(1)
+            if key == '\x1b':
+                # Arrow keys are 3-byte sequences: ESC [ A/B/C/D
+                key2 = sys.stdin.read(1)
+                if key2 == '[':
+                    key3 = sys.stdin.read(1)
+                    key = '\x1b[' + key3
+                else:
+                    key = '\x1b'
+        finally:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
         return key
 
     def run(self):
@@ -102,16 +114,16 @@ class TeleopNode(Node):
 
                 twist = Twist()
 
-                if key == 'w':
+                if key in ('w', '\x1b[A'):    # w or up arrow
                     self.linear_vel = self.linear_speed
                     self.angular_vel = 0.0
-                elif key == 's':
+                elif key in ('s', '\x1b[B'):  # s or down arrow
                     self.linear_vel = -self.linear_speed
                     self.angular_vel = 0.0
-                elif key == 'a':
+                elif key in ('a', '\x1b[D'):  # a or left arrow
                     self.linear_vel = 0.0
                     self.angular_vel = self.angular_speed
-                elif key == 'd':
+                elif key in ('d', '\x1b[C'):  # d or right arrow
                     self.linear_vel = 0.0
                     self.angular_vel = -self.angular_speed
                 elif key == ' ':
