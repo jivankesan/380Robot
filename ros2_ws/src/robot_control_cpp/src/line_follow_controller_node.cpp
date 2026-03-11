@@ -31,6 +31,9 @@ public:
     this->declare_parameter("reacquire_ang_vel_rps", 1.0);
     this->declare_parameter("reacquire_heading_deadband_rad", 0.05);
     this->declare_parameter("reacquire_lateral_deadband_m", 0.01);
+    this->declare_parameter("corner_heading_threshold_rad", 0.35);
+    this->declare_parameter("corner_confirm_time_s", 0.2);
+    this->declare_parameter("corner_heading_scale", 0.25);
 
     // Get parameters
     control_rate_hz_ = this->get_parameter("control_rate_hz").as_double();
@@ -49,6 +52,10 @@ public:
         this->get_parameter("reacquire_heading_deadband_rad").as_double();
     reacquire_lateral_deadband_ =
         this->get_parameter("reacquire_lateral_deadband_m").as_double();
+    corner_heading_threshold_ =
+        this->get_parameter("corner_heading_threshold_rad").as_double();
+    corner_confirm_time_ = this->get_parameter("corner_confirm_time_s").as_double();
+    corner_heading_scale_ = this->get_parameter("corner_heading_scale").as_double();
 
     // Initialize state
     last_lateral_error_ = 0.0;
@@ -61,6 +68,8 @@ public:
     reacquire_dir_ = 0;
     last_heading_sign_ = 0;
     last_lateral_sign_ = 0;
+    heading_exceeding_ = false;
+    heading_exceed_start_ = this->now();
 
     // Subscriber
     line_sub_ = this->create_subscription<robot_interfaces::msg::LineObservation>(
@@ -152,14 +161,29 @@ private:
     double lateral_error = latest_observation_.lateral_error_m;
     double heading_error = latest_observation_.heading_error_rad;
 
+    // Delay sharp turns briefly to avoid early cornering
+    double heading_for_control = heading_error;
+    if (std::abs(heading_error) > corner_heading_threshold_) {
+      if (!heading_exceeding_) {
+        heading_exceeding_ = true;
+        heading_exceed_start_ = this->now();
+      }
+      double exceed_dt = (this->now() - heading_exceed_start_).seconds();
+      if (exceed_dt < corner_confirm_time_) {
+        heading_for_control *= corner_heading_scale_;
+      }
+    } else {
+      heading_exceeding_ = false;
+    }
+
     // Compute derivatives (simple finite difference)
     double dt = 1.0 / control_rate_hz_;
     double d_lateral = (lateral_error - last_lateral_error_) / dt;
-    double d_heading = (heading_error - last_heading_error_) / dt;
+    double d_heading = (heading_for_control - last_heading_error_) / dt;
 
     // PD control for angular velocity
     double omega = kp_lateral_ * lateral_error + kd_lateral_ * d_lateral +
-                   kp_heading_ * heading_error + kd_heading_ * d_heading;
+                   kp_heading_ * heading_for_control + kd_heading_ * d_heading;
 
     // Clamp angular velocity
     omega = std::clamp(omega, -max_ang_vel_, max_ang_vel_);
@@ -170,7 +194,7 @@ private:
 
     // Update state
     last_lateral_error_ = lateral_error;
-    last_heading_error_ = heading_error;
+    last_heading_error_ = heading_for_control;
     if (std::abs(omega) > 1e-3) {
       last_turn_dir_ = (omega > 0.0) ? 1 : -1;
     }
@@ -193,6 +217,9 @@ private:
   double reacquire_ang_vel_;
   double reacquire_heading_deadband_;
   double reacquire_lateral_deadband_;
+  double corner_heading_threshold_;
+  double corner_confirm_time_;
+  double corner_heading_scale_;
 
   // State
   robot_interfaces::msg::LineObservation latest_observation_;
@@ -207,6 +234,8 @@ private:
   int reacquire_dir_;
   int last_heading_sign_;
   int last_lateral_sign_;
+  bool heading_exceeding_;
+  rclcpp::Time heading_exceed_start_;
 
   // ROS interfaces
   rclcpp::Subscription<robot_interfaces::msg::LineObservation>::SharedPtr line_sub_;
