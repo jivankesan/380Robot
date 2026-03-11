@@ -5,11 +5,11 @@ line_follow_controller_node:
     control_rate_hz: 50.0
 
     # PD gains for lateral error
-    kp_lateral: 3.2
+    kp_lateral: 2.7
     kd_lateral: 0.2
 
     # PD gains for heading error
-    kp_heading: 2.8
+    kp_heading: 2.2
     kd_heading: 0.1
 
     # Speed limits (m/s)
@@ -24,15 +24,10 @@ line_follow_controller_node:
     lost_line_timeout_s: 2.0
 
     # Reacquire behavior (when line briefly leaves FOV)
-    reacquire_lin_vel_mps: 0.0
+    reacquire_lin_vel_mps: 0.06
     reacquire_ang_vel_rps: 1.6
     reacquire_heading_deadband_rad: 0.05
     reacquire_lateral_deadband_m: 0.01
-
-    # Corner handling: require brief confirmation before strong turn
-    corner_heading_threshold_rad: 0.35
-    corner_confirm_time_s: 0.2
-    corner_heading_scale: 0.25
 
 speed_profile_node:
   ros__parameters:
