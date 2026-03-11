@@ -18,7 +18,7 @@ line_follow_controller_node:
     min_lin_vel_mps: 0.05
 
     # Angular velocity limits (rad/s)
-    max_ang_vel_rps: 1.8
+    max_ang_vel_rps: 1.4
 
     # Lost line timeout (seconds)
     lost_line_timeout_s: 2.0
