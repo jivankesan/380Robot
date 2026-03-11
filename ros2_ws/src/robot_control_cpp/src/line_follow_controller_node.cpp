@@ -32,9 +32,11 @@ public:
     this->declare_parameter("reacquire_heading_deadband_rad", 0.05);
     this->declare_parameter("reacquire_lateral_deadband_m", 0.01);
     this->declare_parameter("turn_enter_heading_rad", 0.35);
+    this->declare_parameter("turn_enter_confirm_s", 0.10);
     this->declare_parameter("turn_exit_heading_rad", 0.2);
     this->declare_parameter("turn_exit_confirm_s", 0.12);
     this->declare_parameter("turn_max_time_s", 1.5);
+    this->declare_parameter("turn_blind_duration_s", 1.2);
     this->declare_parameter("turn_lin_vel_mps", 0.12);
     this->declare_parameter("turn_omega_rps", 1.2);
 
@@ -56,9 +58,11 @@ public:
     reacquire_lateral_deadband_ =
         this->get_parameter("reacquire_lateral_deadband_m").as_double();
     turn_enter_heading_ = this->get_parameter("turn_enter_heading_rad").as_double();
+    turn_enter_confirm_ = this->get_parameter("turn_enter_confirm_s").as_double();
     turn_exit_heading_ = this->get_parameter("turn_exit_heading_rad").as_double();
     turn_exit_confirm_ = this->get_parameter("turn_exit_confirm_s").as_double();
     turn_max_time_ = this->get_parameter("turn_max_time_s").as_double();
+    turn_blind_duration_ = this->get_parameter("turn_blind_duration_s").as_double();
     turn_lin_vel_ = this->get_parameter("turn_lin_vel_mps").as_double();
     turn_omega_ = this->get_parameter("turn_omega_rps").as_double();
 
@@ -78,6 +82,10 @@ public:
     turn_start_time_ = this->now();
     turn_exit_candidate_ = false;
     turn_exit_candidate_start_ = this->now();
+    turn_entry_candidate_ = false;
+    turn_entry_candidate_start_ = this->now();
+    turn_line_was_lost_ = false;
+    turn_line_lost_time_ = this->now();
 
     // Subscriber
     line_sub_ = this->create_subscription<robot_interfaces::msg::LineObservation>(
@@ -109,6 +117,7 @@ private:
       last_valid_observation_ = *msg;
       ever_valid_ = true;
       in_reacquire_ = false;
+      turn_line_was_lost_ = false;
 
       if (std::abs(msg->heading_error_rad) > reacquire_heading_deadband_) {
         last_heading_sign_ = (msg->heading_error_rad > 0.0) ? 1 : -1;
@@ -127,10 +136,14 @@ private:
     // Check for line timeout
     double time_since_valid = (this->now() - last_valid_time_).seconds();
     if (!line_valid_) {
-      // If we're committed to a turn, keep turning smoothly during brief loss
+      // If we're committed to a turn, keep turning for turn_blind_duration_s after losing line
       if (in_turn_mode_) {
-        double time_in_turn = (this->now() - turn_start_time_).seconds();
-        if (time_in_turn <= turn_max_time_) {
+        if (!turn_line_was_lost_) {
+          turn_line_was_lost_ = true;
+          turn_line_lost_time_ = this->now();
+        }
+        double time_blind = (this->now() - turn_line_lost_time_).seconds();
+        if (time_blind <= turn_blind_duration_) {
           double omega = static_cast<double>(turn_dir_) * turn_omega_;
           omega = std::clamp(omega, -max_ang_vel_, max_ang_vel_);
           double v = std::clamp(turn_lin_vel_, 0.0, max_lin_vel_);
@@ -140,6 +153,7 @@ private:
           return;
         }
         in_turn_mode_ = false;
+        turn_line_was_lost_ = false;
       }
 
       if (!ever_valid_ || time_since_valid > lost_line_timeout_) {
@@ -184,12 +198,22 @@ private:
     double lateral_error = latest_observation_.lateral_error_m;
     double heading_error = latest_observation_.heading_error_rad;
 
-    // Enter turn mode on sharp heading error
-    if (!in_turn_mode_ && std::abs(heading_error) > turn_enter_heading_) {
-      in_turn_mode_ = true;
-      turn_dir_ = (heading_error >= 0.0) ? 1 : -1;
-      turn_start_time_ = this->now();
-      turn_exit_candidate_ = false;
+    // Enter turn mode only after heading error persists for turn_enter_confirm_s
+    if (!in_turn_mode_) {
+      if (std::abs(heading_error) > turn_enter_heading_) {
+        if (!turn_entry_candidate_) {
+          turn_entry_candidate_ = true;
+          turn_entry_candidate_start_ = this->now();
+        } else if ((this->now() - turn_entry_candidate_start_).seconds() >= turn_enter_confirm_) {
+          in_turn_mode_ = true;
+          turn_dir_ = (heading_error >= 0.0) ? 1 : -1;
+          turn_start_time_ = this->now();
+          turn_exit_candidate_ = false;
+          turn_entry_candidate_ = false;
+        }
+      } else {
+        turn_entry_candidate_ = false;
+      }
     }
 
     // If in turn mode, decide when to exit
@@ -267,9 +291,11 @@ private:
   double reacquire_heading_deadband_;
   double reacquire_lateral_deadband_;
   double turn_enter_heading_;
+  double turn_enter_confirm_;
   double turn_exit_heading_;
   double turn_exit_confirm_;
   double turn_max_time_;
+  double turn_blind_duration_;
   double turn_lin_vel_;
   double turn_omega_;
 
@@ -291,6 +317,10 @@ private:
   rclcpp::Time turn_start_time_;
   bool turn_exit_candidate_;
   rclcpp::Time turn_exit_candidate_start_;
+  bool turn_entry_candidate_;
+  rclcpp::Time turn_entry_candidate_start_;
+  bool turn_line_was_lost_;
+  rclcpp::Time turn_line_lost_time_;
 
   // ROS interfaces
   rclcpp::Subscription<robot_interfaces::msg::LineObservation>::SharedPtr line_sub_;
