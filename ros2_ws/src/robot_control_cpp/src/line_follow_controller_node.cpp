@@ -29,6 +29,8 @@ public:
     this->declare_parameter("lost_line_timeout_s", 2.0);
     this->declare_parameter("reacquire_lin_vel_mps", 0.0);
     this->declare_parameter("reacquire_ang_vel_rps", 1.0);
+    this->declare_parameter("reacquire_heading_deadband_rad", 0.05);
+    this->declare_parameter("reacquire_lateral_deadband_m", 0.01);
 
     // Get parameters
     control_rate_hz_ = this->get_parameter("control_rate_hz").as_double();
@@ -43,6 +45,10 @@ public:
     lost_line_timeout_ = this->get_parameter("lost_line_timeout_s").as_double();
     reacquire_lin_vel_ = this->get_parameter("reacquire_lin_vel_mps").as_double();
     reacquire_ang_vel_ = this->get_parameter("reacquire_ang_vel_rps").as_double();
+    reacquire_heading_deadband_ =
+        this->get_parameter("reacquire_heading_deadband_rad").as_double();
+    reacquire_lateral_deadband_ =
+        this->get_parameter("reacquire_lateral_deadband_m").as_double();
 
     // Initialize state
     last_lateral_error_ = 0.0;
@@ -51,6 +57,10 @@ public:
     last_valid_time_ = this->now();
     last_turn_dir_ = 0;
     ever_valid_ = false;
+    in_reacquire_ = false;
+    reacquire_dir_ = 0;
+    last_heading_sign_ = 0;
+    last_lateral_sign_ = 0;
 
     // Subscriber
     line_sub_ = this->create_subscription<robot_interfaces::msg::LineObservation>(
@@ -81,6 +91,14 @@ private:
       last_valid_time_ = this->now();
       last_valid_observation_ = *msg;
       ever_valid_ = true;
+      in_reacquire_ = false;
+
+      if (std::abs(msg->heading_error_rad) > reacquire_heading_deadband_) {
+        last_heading_sign_ = (msg->heading_error_rad > 0.0) ? 1 : -1;
+      }
+      if (std::abs(msg->lateral_error_m) > reacquire_lateral_deadband_) {
+        last_lateral_sign_ = (msg->lateral_error_m > 0.0) ? 1 : -1;
+      }
     }
   }
 
@@ -104,21 +122,23 @@ private:
         return;
       }
 
-      // Reacquire: pivot toward last seen line for a short grace period
-      double heading = last_valid_observation_.heading_error_rad;
-      double lateral = last_valid_observation_.lateral_error_m;
-      double sign = 0.0;
-      if (std::abs(heading) > 1e-3) {
-        sign = (heading > 0.0) ? 1.0 : -1.0;
-      } else if (std::abs(lateral) > 1e-4) {
-        sign = (lateral > 0.0) ? 1.0 : -1.0;
-      } else if (last_turn_dir_ != 0) {
-        sign = static_cast<double>(last_turn_dir_);
-      } else {
-        sign = 1.0;
+      // Reacquire: pivot toward last seen heading for a short grace period
+      if (!in_reacquire_) {
+        int dir = 0;
+        if (last_heading_sign_ != 0) {
+          dir = last_heading_sign_;
+        } else if (last_lateral_sign_ != 0) {
+          dir = last_lateral_sign_;
+        } else if (last_turn_dir_ != 0) {
+          dir = last_turn_dir_;
+        } else {
+          dir = 1;
+        }
+        reacquire_dir_ = dir;
+        in_reacquire_ = true;
       }
 
-      double omega = sign * reacquire_ang_vel_;
+      double omega = static_cast<double>(reacquire_dir_) * reacquire_ang_vel_;
       omega = std::clamp(omega, -max_ang_vel_, max_ang_vel_);
       double v = std::clamp(reacquire_lin_vel_, 0.0, max_lin_vel_);
 
@@ -171,6 +191,8 @@ private:
   double lost_line_timeout_;
   double reacquire_lin_vel_;
   double reacquire_ang_vel_;
+  double reacquire_heading_deadband_;
+  double reacquire_lateral_deadband_;
 
   // State
   robot_interfaces::msg::LineObservation latest_observation_;
@@ -181,6 +203,10 @@ private:
   robot_interfaces::msg::LineObservation last_valid_observation_;
   int last_turn_dir_;
   bool ever_valid_;
+  bool in_reacquire_;
+  int reacquire_dir_;
+  int last_heading_sign_;
+  int last_lateral_sign_;
 
   // ROS interfaces
   rclcpp::Subscription<robot_interfaces::msg::LineObservation>::SharedPtr line_sub_;
