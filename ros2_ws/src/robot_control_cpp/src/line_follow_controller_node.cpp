@@ -38,7 +38,7 @@ public:
     this->declare_parameter("turn_max_time_s", 1.5);
     this->declare_parameter("turn_blind_duration_s", 1.2);
     this->declare_parameter("turn_lin_vel_mps", 0.12);
-    this->declare_parameter("turn_omega_rps", 1.2);
+    this->declare_parameter("turn_omega_rps", 1.4);
 
     // Get parameters
     control_rate_hz_ = this->get_parameter("control_rate_hz").as_double();
