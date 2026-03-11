@@ -31,6 +31,12 @@ public:
     this->declare_parameter("reacquire_ang_vel_rps", 1.0);
     this->declare_parameter("reacquire_heading_deadband_rad", 0.05);
     this->declare_parameter("reacquire_lateral_deadband_m", 0.01);
+    this->declare_parameter("turn_enter_heading_rad", 0.35);
+    this->declare_parameter("turn_exit_heading_rad", 0.2);
+    this->declare_parameter("turn_exit_confirm_s", 0.12);
+    this->declare_parameter("turn_max_time_s", 1.5);
+    this->declare_parameter("turn_lin_vel_mps", 0.12);
+    this->declare_parameter("turn_omega_rps", 1.2);
 
     // Get parameters
     control_rate_hz_ = this->get_parameter("control_rate_hz").as_double();
@@ -49,6 +55,12 @@ public:
         this->get_parameter("reacquire_heading_deadband_rad").as_double();
     reacquire_lateral_deadband_ =
         this->get_parameter("reacquire_lateral_deadband_m").as_double();
+    turn_enter_heading_ = this->get_parameter("turn_enter_heading_rad").as_double();
+    turn_exit_heading_ = this->get_parameter("turn_exit_heading_rad").as_double();
+    turn_exit_confirm_ = this->get_parameter("turn_exit_confirm_s").as_double();
+    turn_max_time_ = this->get_parameter("turn_max_time_s").as_double();
+    turn_lin_vel_ = this->get_parameter("turn_lin_vel_mps").as_double();
+    turn_omega_ = this->get_parameter("turn_omega_rps").as_double();
 
     // Initialize state
     last_lateral_error_ = 0.0;
@@ -61,6 +73,11 @@ public:
     reacquire_dir_ = 0;
     last_heading_sign_ = 0;
     last_lateral_sign_ = 0;
+    in_turn_mode_ = false;
+    turn_dir_ = 0;
+    turn_start_time_ = this->now();
+    turn_exit_candidate_ = false;
+    turn_exit_candidate_start_ = this->now();
 
     // Subscriber
     line_sub_ = this->create_subscription<robot_interfaces::msg::LineObservation>(
@@ -110,6 +127,21 @@ private:
     // Check for line timeout
     double time_since_valid = (this->now() - last_valid_time_).seconds();
     if (!line_valid_) {
+      // If we're committed to a turn, keep turning smoothly during brief loss
+      if (in_turn_mode_) {
+        double time_in_turn = (this->now() - turn_start_time_).seconds();
+        if (time_in_turn <= turn_max_time_) {
+          double omega = static_cast<double>(turn_dir_) * turn_omega_;
+          omega = std::clamp(omega, -max_ang_vel_, max_ang_vel_);
+          double v = std::clamp(turn_lin_vel_, 0.0, max_lin_vel_);
+          cmd.linear.x = v;
+          cmd.angular.z = omega;
+          cmd_pub_->publish(cmd);
+          return;
+        }
+        in_turn_mode_ = false;
+      }
+
       if (!ever_valid_ || time_since_valid > lost_line_timeout_) {
         // Lost line - stop
         RCLCPP_WARN_THROTTLE(
@@ -152,6 +184,34 @@ private:
     double lateral_error = latest_observation_.lateral_error_m;
     double heading_error = latest_observation_.heading_error_rad;
 
+    // Enter turn mode on sharp heading error
+    if (!in_turn_mode_ && std::abs(heading_error) > turn_enter_heading_) {
+      in_turn_mode_ = true;
+      turn_dir_ = (heading_error >= 0.0) ? 1 : -1;
+      turn_start_time_ = this->now();
+      turn_exit_candidate_ = false;
+    }
+
+    // If in turn mode, decide when to exit
+    if (in_turn_mode_) {
+      double time_in_turn = (this->now() - turn_start_time_).seconds();
+      if (time_in_turn > turn_max_time_) {
+        in_turn_mode_ = false;
+      } else if (std::abs(heading_error) < turn_exit_heading_) {
+        if (!turn_exit_candidate_) {
+          turn_exit_candidate_ = true;
+          turn_exit_candidate_start_ = this->now();
+        } else {
+          double exit_dt = (this->now() - turn_exit_candidate_start_).seconds();
+          if (exit_dt > turn_exit_confirm_) {
+            in_turn_mode_ = false;
+          }
+        }
+      } else {
+        turn_exit_candidate_ = false;
+      }
+    }
+
     // Compute derivatives (simple finite difference)
     double dt = 1.0 / control_rate_hz_;
     double d_lateral = (lateral_error - last_lateral_error_) / dt;
@@ -161,11 +221,24 @@ private:
     double omega = kp_lateral_ * lateral_error + kd_lateral_ * d_lateral +
                    kp_heading_ * heading_error + kd_heading_ * d_heading;
 
+    if (in_turn_mode_) {
+      // Keep turning in the committed direction, but allow PD to shape magnitude
+      if (omega * static_cast<double>(turn_dir_) < 0.0) {
+        omega = static_cast<double>(turn_dir_) * std::abs(omega);
+      }
+      if (std::abs(omega) < turn_omega_) {
+        omega = static_cast<double>(turn_dir_) * turn_omega_;
+      }
+    }
+
     // Clamp angular velocity
     omega = std::clamp(omega, -max_ang_vel_, max_ang_vel_);
 
     // Linear velocity (base speed, can be modulated by speed profile node)
     double v = base_speed_;
+    if (in_turn_mode_) {
+      v = std::min(v, turn_lin_vel_);
+    }
     v = std::clamp(v, min_lin_vel_, max_lin_vel_);
 
     // Update state
@@ -193,6 +266,12 @@ private:
   double reacquire_ang_vel_;
   double reacquire_heading_deadband_;
   double reacquire_lateral_deadband_;
+  double turn_enter_heading_;
+  double turn_exit_heading_;
+  double turn_exit_confirm_;
+  double turn_max_time_;
+  double turn_lin_vel_;
+  double turn_omega_;
 
   // State
   robot_interfaces::msg::LineObservation latest_observation_;
@@ -207,6 +286,11 @@ private:
   int reacquire_dir_;
   int last_heading_sign_;
   int last_lateral_sign_;
+  bool in_turn_mode_;
+  int turn_dir_;
+  rclcpp::Time turn_start_time_;
+  bool turn_exit_candidate_;
+  rclcpp::Time turn_exit_candidate_start_;
 
   // ROS interfaces
   rclcpp::Subscription<robot_interfaces::msg::LineObservation>::SharedPtr line_sub_;

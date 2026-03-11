@@ -29,6 +29,14 @@ line_follow_controller_node:
     reacquire_heading_deadband_rad: 0.05
     reacquire_lateral_deadband_m: 0.01
 
+    # Turn mode: commit to a corner and ride it smoothly
+    turn_enter_heading_rad: 0.35
+    turn_exit_heading_rad: 0.2
+    turn_exit_confirm_s: 0.12
+    turn_max_time_s: 1.5
+    turn_lin_vel_mps: 0.12
+    turn_omega_rps: 1.2
+
 speed_profile_node:
   ros__parameters:
     # Speed limits
