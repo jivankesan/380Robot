@@ -13,15 +13,19 @@ line_follow_controller_node:
     kd_heading: 0.1
 
     # Speed limits (m/s)
-    base_speed_mps: 0.2
+    base_speed_mps: 0.18
     max_lin_vel_mps: 0.3
     min_lin_vel_mps: 0.05
 
     # Angular velocity limits (rad/s)
-    max_ang_vel_rps: 1.2
+    max_ang_vel_rps: 1.8
 
     # Lost line timeout (seconds)
     lost_line_timeout_s: 2.0
+
+    # Reacquire behavior (when line briefly leaves FOV)
+    reacquire_lin_vel_mps: 0.0
+    reacquire_ang_vel_rps: 1.4
 
 speed_profile_node:
   ros__parameters:
@@ -38,7 +42,7 @@ speed_profile_node:
     # Slowdown gains based on path geometry
     curvature_slowdown_gain: 0.3
     error_slowdown_gain: 0.5
-    heading_slowdown_gain: 0.2
+    heading_slowdown_gain: 0.35
 
     # Control rate
     rate_hz: 50.0
