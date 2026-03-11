@@ -18,14 +18,14 @@ line_follow_controller_node:
     min_lin_vel_mps: 0.05
 
     # Angular velocity limits (rad/s)
-    max_ang_vel_rps: 1.4
+    max_ang_vel_rps: 1.6
 
     # Lost line timeout (seconds)
     lost_line_timeout_s: 2.0
 
     # Reacquire behavior (when line briefly leaves FOV)
     reacquire_lin_vel_mps: 0.0
-    reacquire_ang_vel_rps: 1.4
+    reacquire_ang_vel_rps: 1.6
     reacquire_heading_deadband_rad: 0.05
     reacquire_lateral_deadband_m: 0.01
 
