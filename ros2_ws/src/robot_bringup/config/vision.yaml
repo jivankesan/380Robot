@@ -6,8 +6,8 @@ line_detector_node:
     # Avoid the very bottom (robot body) and very top (horizon/walls).
     roi_y_start: 0.20
     roi_y_end: 0.90
-    roi_x_start: 0.1
-    roi_x_end: 0.9
+    roi_x_start: 0.0
+    roi_x_end: 1.0
 
     # HSV range 1 - lower red (H=0-10)
     line_h_min: 0
