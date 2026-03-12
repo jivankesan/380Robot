@@ -2,7 +2,7 @@
 line_follow_controller_node:
   ros__parameters:
     # Control rate
-    control_rate_hz: 50.0
+    control_rate_hz: 100.0
 
     # PD gains for lateral error
     kp_lateral: 6.5
