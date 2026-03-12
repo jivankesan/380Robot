@@ -27,6 +27,8 @@ public:
     this->declare_parameter("min_lin_vel_mps", 0.1);
     this->declare_parameter("max_ang_vel_rps", 1.5);
     this->declare_parameter("lost_line_timeout_s", 2.0);
+    this->declare_parameter("turn_speed_gain", 0.5);
+    this->declare_parameter("min_turn_speed_mps", 0.1);
 
     // Get parameters
     control_rate_hz_ = this->get_parameter("control_rate_hz").as_double();
@@ -39,6 +41,8 @@ public:
     min_lin_vel_ = this->get_parameter("min_lin_vel_mps").as_double();
     max_ang_vel_ = this->get_parameter("max_ang_vel_rps").as_double();
     lost_line_timeout_ = this->get_parameter("lost_line_timeout_s").as_double();
+    turn_speed_gain_ = this->get_parameter("turn_speed_gain").as_double();
+    min_turn_speed_ = this->get_parameter("min_turn_speed_mps").as_double();
 
     // Initialize state
     last_lateral_error_ = 0.0;
@@ -111,9 +115,9 @@ private:
     // Clamp angular velocity
     omega = std::clamp(omega, -max_ang_vel_, max_ang_vel_);
 
-    // Linear velocity (base speed, can be modulated by speed profile node)
-    double v = base_speed_;
-    v = std::clamp(v, min_lin_vel_, max_lin_vel_);
+    // Linear velocity: slow down proportional to angular demand
+    double v = base_speed_ - turn_speed_gain_ * std::abs(omega);
+    v = std::clamp(v, min_turn_speed_, max_lin_vel_);
 
     // Update state
     last_lateral_error_ = lateral_error;
@@ -133,6 +137,8 @@ private:
   double max_lin_vel_, min_lin_vel_;
   double max_ang_vel_;
   double lost_line_timeout_;
+  double turn_speed_gain_;
+  double min_turn_speed_;
 
   // State
   robot_interfaces::msg::LineObservation latest_observation_;
