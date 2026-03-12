@@ -13,8 +13,8 @@ line_follow_controller_node:
     kd_heading: 0.4
 
     # Speed limits (m/s)
-    base_speed_mps: 0.15
-    max_lin_vel_mps: 0.20
+    base_speed_mps: 0.25
+    max_lin_vel_mps: 0.30
     min_lin_vel_mps: 0.05
 
     # Angular velocity limits (rad/s)
