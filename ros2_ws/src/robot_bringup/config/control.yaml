@@ -9,8 +9,8 @@ line_follow_controller_node:
     kd_lateral: 1.2
 
     # PD gains for heading error
-    kp_heading: 2.7
-    kd_heading: 0.4
+    kp_heading: 1.5
+    kd_heading: 0.2
 
     # Speed limits (m/s)
     base_speed_mps: 0.25
@@ -18,13 +18,13 @@ line_follow_controller_node:
     min_lin_vel_mps: 0.05
 
     # Angular velocity limits (rad/s)
-    max_ang_vel_rps: 1.2
+    max_ang_vel_rps: 0.8
 
     # Turn speed reduction: v = base_speed - turn_speed_gain * abs(omega)
     # Higher gain = more slowdown on turns. min_turn_speed_mps is the floor.
     turn_speed_gain: 0.2
     min_turn_speed_mps: 0.1
-    turn_omega_deadband_rps: 0.6
+    turn_omega_deadband_rps: 0.9
 
     # Lost line timeout (seconds)
     lost_line_timeout_s: 2.0
