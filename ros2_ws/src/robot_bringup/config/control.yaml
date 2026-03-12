@@ -6,15 +6,15 @@ line_follow_controller_node:
 
     # PD gains for lateral error
     kp_lateral: 2.5
-    kd_lateral: 0.2
+    kd_lateral: 0.5
 
     # PD gains for heading error
     kp_heading: 2.0
-    kd_heading: 0.1
+    kd_heading: 0.2
 
     # Speed limits (m/s)
-    base_speed_mps: 0.2
-    max_lin_vel_mps: 0.3
+    base_speed_mps: 0.35
+    max_lin_vel_mps: 0.45
     min_lin_vel_mps: 0.05
 
     # Angular velocity limits (rad/s)
