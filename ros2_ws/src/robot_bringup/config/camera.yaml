@@ -6,4 +6,4 @@ camera_node:
     framerate: 30.0
     camera_frame_id: "camera_link"
     camera_info_url: ""
-    pixel_format: "YUYV"
+    pixel_format: "MJPG"

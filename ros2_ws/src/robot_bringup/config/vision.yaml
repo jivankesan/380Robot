@@ -4,7 +4,7 @@ line_detector_node:
     # ROI settings (fraction of image height/width)
     # Tune roi_y_start/end to focus on the lookahead strip.
     # Avoid the very bottom (robot body) and very top (horizon/walls).
-    roi_y_start: 0.40
+    roi_y_start: 0.35
     roi_y_end: 0.90
     roi_x_start: 0.0
     roi_x_end: 1.0
