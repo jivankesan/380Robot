@@ -6,7 +6,7 @@ line_follow_controller_node:
 
     # PD gains for lateral error
     kp_lateral: 6.5
-    kd_lateral: 1.2
+    kd_lateral: 2.0
 
     # PD gains for heading error
     kp_heading: 2.7
