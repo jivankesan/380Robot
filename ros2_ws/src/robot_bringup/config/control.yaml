@@ -5,7 +5,7 @@ line_follow_controller_node:
     control_rate_hz: 50.0
 
     # PD gains for lateral error
-    kp_lateral: 4.0
+    kp_lateral: 5.5
     kd_lateral: 0.5
 
     # PD gains for heading error
