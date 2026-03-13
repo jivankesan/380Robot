@@ -44,6 +44,9 @@ public:
     this->declare_parameter("right_motor_gain", 1.0);
     this->declare_parameter("left_motor_reversed", false);
     this->declare_parameter("right_motor_reversed", false);
+    this->declare_parameter("claw_servo_num", 2);
+    this->declare_parameter("claw_open_angle", 90);
+    this->declare_parameter("claw_close_angle", 150);
 
     // Get parameters
     serial_port_ = this->get_parameter("serial_port").as_string();
@@ -58,6 +61,9 @@ public:
     right_gain_ = this->get_parameter("right_motor_gain").as_double();
     left_reversed_ = this->get_parameter("left_motor_reversed").as_bool();
     right_reversed_ = this->get_parameter("right_motor_reversed").as_bool();
+    claw_servo_num_ = this->get_parameter("claw_servo_num").as_int();
+    claw_open_angle_ = this->get_parameter("claw_open_angle").as_int();
+    claw_close_angle_ = this->get_parameter("claw_close_angle").as_int();
 
     // Initialize state
     target_v_ = 0.0;
@@ -238,14 +244,19 @@ private:
     }
   }
 
-  void send_claw_command(uint8_t mode, float position) {
+  void send_claw_command(uint8_t mode, float /*position*/) {
     if (serial_fd_ < 0) {
       return;
     }
 
-    int pos_scaled = static_cast<int>(position * 1000);
+    // Map mode to servo angle matching demo.py: S,<servo_num>,<angle>
+    int angle = claw_open_angle_;
+    if (mode == robot_interfaces::msg::ClawCommand::MODE_CLOSE) {
+      angle = claw_close_angle_;
+    }
+
     std::stringstream ss;
-    ss << "C," << static_cast<int>(mode) << "," << pos_scaled << "\n";
+    ss << "S," << claw_servo_num_ << "," << angle << "\n";
     std::string cmd = ss.str();
 
     ssize_t written = write(serial_fd_, cmd.c_str(), cmd.length());
@@ -339,6 +350,7 @@ private:
   double telemetry_rate_hz_;
   double left_gain_, right_gain_;
   bool left_reversed_, right_reversed_;
+  int claw_servo_num_, claw_open_angle_, claw_close_angle_;
 
   // Serial state
   int serial_fd_;

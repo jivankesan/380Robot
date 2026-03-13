@@ -30,3 +30,8 @@ serial_bridge_node:
     # Reverse motor direction if needed
     left_motor_reversed: false
     right_motor_reversed: false
+
+    # Claw servo settings (matching demo.py)
+    claw_servo_num: 2
+    claw_open_angle: 90
+    claw_close_angle: 150
