@@ -13,7 +13,7 @@ task_fsm_node:
     target_center_tolerance_y: 0.2
 
     # Target size threshold for "close enough" (normalized)
-    target_size_close_threshold: 0.25
+    target_size_close_threshold: 0.15
 
     # Pickup timing (seconds)
     pickup_close_time_s: 1.0

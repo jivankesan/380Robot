@@ -49,13 +49,13 @@ object_detector_node:
 
     # Heuristic detector settings — blue outer ring of target circle
     # Blue HSV: H=100-130, high saturation
-    heuristic_h_min: 100
-    heuristic_h_max: 130
-    heuristic_s_min: 100
+    heuristic_h_min: 105
+    heuristic_h_max: 125
+    heuristic_s_min: 160
     heuristic_s_max: 255
-    heuristic_v_min: 50
+    heuristic_v_min: 80
     heuristic_v_max: 255
-    heuristic_min_area: 300
+    heuristic_min_area: 150
     heuristic_max_area: 50000
 
     # YOLO settings (if using yolo detector)
