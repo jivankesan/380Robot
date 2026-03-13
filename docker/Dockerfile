@@ -30,6 +30,12 @@ RUN apt-get update && apt-get install -y \
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list
 
+# Install libcamera-dev (headers needed to build camera_ros; Pi-specific apps
+# live on the host and are volume-mounted in at runtime)
+RUN apt-get update && apt-get install -y \
+    libcamera-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install ROS 2 and development tools
 RUN apt-get update && apt-get install -y \
     ros-${ROS_DISTRO}-ros-base \
@@ -45,6 +51,7 @@ RUN apt-get update && apt-get install -y \
     ros-${ROS_DISTRO}-xacro \
     ros-${ROS_DISTRO}-diagnostic-updater \
     ros-${ROS_DISTRO}-v4l2-camera \
+    ros-${ROS_DISTRO}-camera-ros \
     ros-${ROS_DISTRO}-image-transport-plugins \
     ros-dev-tools \
     python3-rosdep \

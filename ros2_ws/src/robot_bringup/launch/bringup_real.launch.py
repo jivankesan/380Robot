@@ -42,16 +42,14 @@ def generate_launch_description():
             launch_arguments={'use_sim_time': use_sim_time}.items(),
         ),
 
-        # Camera node (v4l2_camera)
+        # Camera: reads MJPEG stream from native Pi camera server and publishes
+        # /camera/image_raw — avoids libcamera incompatibility inside Docker
         Node(
-            package='v4l2_camera',
-            executable='v4l2_camera_node',
-            name='camera_node',
-            parameters=[camera_config],
-            remappings=[
-                ('image_raw', '/camera/image_raw'),
-                ('camera_info', '/camera/camera_info'),
-            ],
+            package='robot_vision_py',
+            executable='mjpeg_camera_node',
+            name='mjpeg_camera_node',
+            parameters=[{'stream_url': 'http://localhost:8081/stream',
+                         'frame_id': 'camera_link'}],
         ),
 
         # Vision: Line detector

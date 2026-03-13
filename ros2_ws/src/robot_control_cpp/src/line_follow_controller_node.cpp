@@ -17,7 +17,7 @@ class LineFollowControllerNode : public rclcpp::Node {
 public:
   LineFollowControllerNode() : Node("line_follow_controller_node") {
     // Declare parameters
-    this->declare_parameter("control_rate_hz", 50.0);
+    this->declare_parameter("control_rate_hz", 100.0);
     this->declare_parameter("kp_lateral", 2.0);
     this->declare_parameter("kd_lateral", 0.1);
     this->declare_parameter("kp_heading", 1.5);
@@ -90,7 +90,6 @@ private:
     // Check for line timeout
     double time_since_valid = (this->now() - last_valid_time_).seconds();
     if (!line_valid_ || time_since_valid > lost_line_timeout_) {
-      // Lost line - stop
       RCLCPP_WARN_THROTTLE(
           this->get_logger(),
           *this->get_clock(),

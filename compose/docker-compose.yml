@@ -21,6 +21,9 @@ services:
     volumes:
       # Bind mount the entire repository
       - ..:/workspaces/380Robot:cached
+      # libcamera IPA modules and tuning files must be visible inside the container
+      - /usr/share/libcamera:/usr/share/libcamera:ro
+      - /usr/lib/libcamera:/usr/lib/libcamera:ro
 
     working_dir: /workspaces/380Robot/ros2_ws
 
@@ -30,15 +33,12 @@ services:
       - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}
       - DISPLAY=${DISPLAY:-}
 
-    # Device passthrough for Linux (camera and serial)
-    # Uncomment as needed - these won't work on macOS/Windows
-    # devices:
-    #   - /dev/video0:/dev/video0
-    #   - /dev/ttyACM0:/dev/ttyACM0
-
-    # For GUI applications on Linux with X11
-    # volumes:
-    #   - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    # Device passthrough for Pi Camera (libcamera) and serial
+    devices:
+      - /dev/video0:/dev/video0
+      - /dev/media0:/dev/media0
+      - /dev/media2:/dev/media2
+      - /dev/ttyUSB0:/dev/ttyUSB0
 
     # Keep container running
     command: bash
