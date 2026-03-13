@@ -2,7 +2,7 @@
 task_fsm_node:
   ros__parameters:
     # Target object settings
-    target_class: "lego_person"
+    target_class: "target_circle"
     detection_confidence_threshold: 0.5
 
     # Detection stability (frames before transition)

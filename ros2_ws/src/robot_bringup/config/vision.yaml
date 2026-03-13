@@ -42,19 +42,20 @@ object_detector_node:
     detector_type: "heuristic"
 
     # Target class to detect
-    target_class: "lego_person"
+    target_class: "target_circle"
 
     # Confidence threshold
     confidence_threshold: 0.5
 
-    # Heuristic detector settings (for LEGO person - typically yellow/red)
-    heuristic_h_min: 15
-    heuristic_h_max: 35
+    # Heuristic detector settings — blue outer ring of target circle
+    # Blue HSV: H=100-130, high saturation
+    heuristic_h_min: 100
+    heuristic_h_max: 130
     heuristic_s_min: 100
     heuristic_s_max: 255
-    heuristic_v_min: 100
+    heuristic_v_min: 50
     heuristic_v_max: 255
-    heuristic_min_area: 200
+    heuristic_min_area: 300
     heuristic_max_area: 50000
 
     # YOLO settings (if using yolo detector)

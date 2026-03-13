@@ -244,6 +244,12 @@ private:
     enable_msg.data = true;
     enable_pub_->publish(enable_msg);
 
+    // Keep claw open while searching
+    robot_interfaces::msg::ClawCommand claw_cmd;
+    claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_OPEN;
+    claw_cmd.position = 0.0;
+    claw_pub_->publish(claw_cmd);
+
     // Check for target detection
     auto target = find_target();
     if (target.has_value()) {
@@ -262,6 +268,12 @@ private:
     std_msgs::msg::Bool enable_msg;
     enable_msg.data = true;
     enable_pub_->publish(enable_msg);
+
+    // Keep claw open while approaching
+    robot_interfaces::msg::ClawCommand claw_cmd;
+    claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_OPEN;
+    claw_cmd.position = 0.0;
+    claw_pub_->publish(claw_cmd);
 
     auto target = find_target();
     if (!target.has_value()) {
