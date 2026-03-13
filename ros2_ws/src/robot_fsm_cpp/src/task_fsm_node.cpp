@@ -226,6 +226,12 @@ private:
     enable_msg.data = false;
     enable_pub_->publish(enable_msg);
 
+    // Open claw immediately on startup
+    robot_interfaces::msg::ClawCommand claw_cmd;
+    claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_OPEN;
+    claw_cmd.position = 0.0;
+    claw_pub_->publish(claw_cmd);
+
     // Wait for line and hardware to be ready
     double wait_time = (this->now() - state_start_time_).seconds();
     if (line_valid_ && hw_ready_) {
