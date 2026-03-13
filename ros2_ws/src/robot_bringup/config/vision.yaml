@@ -22,7 +22,7 @@ line_detector_node:
 
     # Minimum detected mask area to count as a valid line (pixels^2).
     # Increase if you get false positives; decrease if line is thin/far.
-    min_mask_area_px: 150
+    min_mask_area_px: 500
 
     # Camera mounting offset in pixels.
     # If the robot consistently drifts left, set a positive value (~+10 to +30).
