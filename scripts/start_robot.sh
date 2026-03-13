@@ -24,7 +24,7 @@ sudo chmod 666 /dev/media2   2>/dev/null || echo "Warning: /dev/media2 not found
 # Docker's mjpeg_camera_node reads this stream over localhost
 echo -e "${YELLOW}Starting Pi Camera MJPEG server natively...${NC}"
 pkill -f "camera_mjpeg_server.py" 2>/dev/null || true
-python3 "$REPO_DIR/scripts/camera_mjpeg_server.py" --port 8081 --width 320 --height 240 --fps 120 &
+python3 "$REPO_DIR/scripts/camera_mjpeg_server.py" --port 8081 --width 640 --height 480 --fps 58 &
 CAMERA_PID=$!
 echo "MJPEG server PID: $CAMERA_PID"
 sleep 2
