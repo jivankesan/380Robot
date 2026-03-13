@@ -27,7 +27,7 @@ class LineDetectorNode(Node):
         super().__init__('line_detector_node')
 
         # Declare parameters
-        self.declare_parameter('roi_y_start', 0.50)
+        self.declare_parameter('roi_y_start', 0.62)
         self.declare_parameter('roi_y_end', 0.85)
         self.declare_parameter('roi_x_start', 0.1)
         self.declare_parameter('roi_x_end', 0.9)
