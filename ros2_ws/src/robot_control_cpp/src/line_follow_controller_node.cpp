@@ -55,6 +55,8 @@ public:
     last_valid_time_ = this->now();
     last_obs_time_ = this->now();
     first_obs_ = true;
+    fps_frame_count_ = 0;
+    fps_window_start_ = this->now();
 
     // Subscriber — control runs inside this callback, locked to camera rate
     line_sub_ = this->create_subscription<robot_interfaces::msg::LineObservation>(
@@ -80,6 +82,16 @@ private:
     line_valid_ = msg->valid;
     if (line_valid_) {
       last_valid_time_ = this->now();
+    }
+
+    // FPS logging — print every 2 seconds
+    fps_frame_count_++;
+    double fps_elapsed = (this->now() - fps_window_start_).seconds();
+    if (fps_elapsed >= 2.0) {
+      double fps = fps_frame_count_ / fps_elapsed;
+      RCLCPP_INFO(this->get_logger(), "Control loop FPS: %.1f", fps);
+      fps_frame_count_ = 0;
+      fps_window_start_ = this->now();
     }
 
     // Check for line timeout
@@ -156,6 +168,8 @@ private:
   rclcpp::Time last_valid_time_;
   rclcpp::Time last_obs_time_;
   bool first_obs_;
+  int fps_frame_count_;
+  rclcpp::Time fps_window_start_;
 
   // ROS interfaces
   rclcpp::Subscription<robot_interfaces::msg::LineObservation>::SharedPtr line_sub_;

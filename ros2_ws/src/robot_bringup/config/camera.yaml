@@ -4,9 +4,9 @@ camera_node:
     # Camera index (0 = primary Pi Camera)
     camera: 0
     # Resolution
-    width: 640
-    height: 480
+    width: 320
+    height: 240
     # Framerate
-    fps: 58.92
+    fps: 120.0
     # TF frame
     frame_id: "camera_link"
