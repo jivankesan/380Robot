@@ -42,9 +42,15 @@ def generate_launch_description():
             launch_arguments={'use_sim_time': use_sim_time}.items(),
         ),
 
-        # NOTE: camera_node is launched natively on the Pi (outside Docker)
-        # by start_robot.sh — libcamera's rpi/pisp pipeline won't work inside
-        # the Ubuntu-based Docker container.
+        # Camera: reads MJPEG stream from native Pi camera server and publishes
+        # /camera/image_raw — avoids libcamera incompatibility inside Docker
+        Node(
+            package='robot_vision_py',
+            executable='mjpeg_camera_node',
+            name='mjpeg_camera_node',
+            parameters=[{'stream_url': 'http://localhost:8081/stream',
+                         'frame_id': 'camera_link'}],
+        ),
 
         # Vision: Line detector
         Node(

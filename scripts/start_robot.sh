@@ -20,22 +20,13 @@ sudo chmod 666 /dev/video0   2>/dev/null || echo "Warning: /dev/video0 not found
 sudo chmod 666 /dev/media0   2>/dev/null || echo "Warning: /dev/media0 not found"
 sudo chmod 666 /dev/media2   2>/dev/null || echo "Warning: /dev/media2 not found"
 
-# Launch camera_ros natively on the Pi (libcamera is Pi-specific and won't work
-# inside the Ubuntu Docker container)
-echo -e "${YELLOW}Starting Pi Camera natively...${NC}"
-source /opt/ros/jazzy/setup.bash 2>/dev/null || source /opt/ros/humble/setup.bash
-# Kill any existing camera_node process
-pkill -f "camera_node" 2>/dev/null || true
-ros2 run camera_ros camera_node \
-  --ros-args \
-  -p camera:=0 \
-  -p width:=640 \
-  -p height:=480 \
-  -p fps:=58.92 \
-  -r "~/image_raw:=/camera/image_raw" \
-  -r "~/camera_info:=/camera/camera_info" &
+# Launch MJPEG camera server natively (picamera2, no ROS needed)
+# Docker's mjpeg_camera_node reads this stream over localhost
+echo -e "${YELLOW}Starting Pi Camera MJPEG server natively...${NC}"
+pkill -f "camera_mjpeg_server.py" 2>/dev/null || true
+python3 "$REPO_DIR/scripts/camera_mjpeg_server.py" --port 8081 --width 640 --height 480 --fps 58 &
 CAMERA_PID=$!
-echo "Camera node PID: $CAMERA_PID"
+echo "MJPEG server PID: $CAMERA_PID"
 sleep 2
 
 # Start the container if not already running
