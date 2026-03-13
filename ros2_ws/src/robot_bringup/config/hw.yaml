@@ -13,7 +13,7 @@ serial_bridge_node:
     max_pwm: 100
 
     # Command rate (Hz)
-    cmd_rate_hz: 50.0
+    cmd_rate_hz: 80.0
 
     # Watchdog timeout (ms)
     watchdog_timeout_ms: 250
