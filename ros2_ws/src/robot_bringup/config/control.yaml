@@ -1,6 +1,9 @@
 # Controller configuration
 line_follow_controller_node:
   ros__parameters:
+    # Control rate
+    control_rate_hz: 100.0
+
     # PD gains for lateral error
     kp_lateral: 5.8
     kd_lateral: 1.3
