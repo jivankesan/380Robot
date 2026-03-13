@@ -15,8 +15,10 @@ echo "================"
 
 # Fix device permissions
 echo -e "${YELLOW}Setting device permissions...${NC}"
-sudo chmod 666 /dev/ttyUSB0 2>/dev/null || echo "Warning: /dev/ttyUSB0 not found"
-sudo chmod 666 /dev/video0  2>/dev/null || echo "Warning: /dev/video0 not found"
+sudo chmod 666 /dev/ttyUSB0  2>/dev/null || echo "Warning: /dev/ttyUSB0 not found"
+sudo chmod 666 /dev/video0   2>/dev/null || echo "Warning: /dev/video0 not found"
+sudo chmod 666 /dev/media0   2>/dev/null || echo "Warning: /dev/media0 not found"
+sudo chmod 666 /dev/media2   2>/dev/null || echo "Warning: /dev/media2 not found"
 
 # Start the container if not already running
 echo -e "${YELLOW}Starting Docker container...${NC}"

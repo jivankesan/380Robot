@@ -42,15 +42,15 @@ def generate_launch_description():
             launch_arguments={'use_sim_time': use_sim_time}.items(),
         ),
 
-        # Camera node (v4l2_camera)
+        # Camera node (camera_ros / libcamera for Raspberry Pi Camera)
         Node(
-            package='v4l2_camera',
-            executable='v4l2_camera_node',
+            package='camera_ros',
+            executable='camera_node',
             name='camera_node',
             parameters=[camera_config],
             remappings=[
-                ('image_raw', '/camera/image_raw'),
-                ('camera_info', '/camera/camera_info'),
+                ('~/image_raw', '/camera/image_raw'),
+                ('~/camera_info', '/camera/camera_info'),
             ],
         ),
 
