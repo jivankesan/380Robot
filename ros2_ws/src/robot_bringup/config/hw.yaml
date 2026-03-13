@@ -27,11 +27,6 @@ serial_bridge_node:
     left_motor_gain: 1.0
     right_motor_gain: 1.0
 
-    # Minimum PWM to actually move the motors (overcome stiction/deadband).
-    # Any non-zero command below this value gets bumped up to this threshold.
-    # Increase if motors stall on turns; decrease if you get jerky low-speed motion.
-    min_motor_pwm: 30
-
     # Reverse motor direction if needed
     left_motor_reversed: false
     right_motor_reversed: false
