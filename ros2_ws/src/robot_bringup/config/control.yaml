@@ -22,9 +22,9 @@ line_follow_controller_node:
 
     # Turn speed reduction: v = base_speed - turn_speed_gain * abs(omega)
     # Higher gain = more slowdown on turns. min_turn_speed_mps is the floor.
-    turn_speed_gain: 0.8
+    turn_speed_gain: 0.5
     min_turn_speed_mps: 0.1
-    turn_omega_deadband_rps: 0.15
+    turn_omega_deadband_rps: 0.30
 
     # Lost line timeout (seconds)
     lost_line_timeout_s: 2.0
