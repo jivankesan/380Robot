@@ -42,17 +42,9 @@ def generate_launch_description():
             launch_arguments={'use_sim_time': use_sim_time}.items(),
         ),
 
-        # Camera node (camera_ros / libcamera for Raspberry Pi Camera)
-        Node(
-            package='camera_ros',
-            executable='camera_node',
-            name='camera_node',
-            parameters=[camera_config],
-            remappings=[
-                ('~/image_raw', '/camera/image_raw'),
-                ('~/camera_info', '/camera/camera_info'),
-            ],
-        ),
+        # NOTE: camera_node is launched natively on the Pi (outside Docker)
+        # by start_robot.sh — libcamera's rpi/pisp pipeline won't work inside
+        # the Ubuntu-based Docker container.
 
         # Vision: Line detector
         Node(
