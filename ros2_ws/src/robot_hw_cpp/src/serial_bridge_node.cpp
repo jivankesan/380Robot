@@ -44,6 +44,7 @@ public:
     this->declare_parameter("right_motor_gain", 1.0);
     this->declare_parameter("left_motor_reversed", false);
     this->declare_parameter("right_motor_reversed", false);
+    this->declare_parameter("min_pwm", 60);
 
     // Get parameters
     serial_port_ = this->get_parameter("serial_port").as_string();
@@ -58,6 +59,7 @@ public:
     right_gain_ = this->get_parameter("right_motor_gain").as_double();
     left_reversed_ = this->get_parameter("left_motor_reversed").as_bool();
     right_reversed_ = this->get_parameter("right_motor_reversed").as_bool();
+    min_pwm_ = this->get_parameter("min_pwm").as_int();
 
     // Initialize state
     target_v_ = 0.0;
@@ -219,6 +221,18 @@ private:
     int pwm_left = static_cast<int>(norm_left * max_pwm_);
     int pwm_right = static_cast<int>(norm_right * max_pwm_);
 
+    // During forward motion, never let either wheel reverse due to v/omega mismatch
+    if (target_v_ > 0.0) {
+      pwm_left  = std::max(0, pwm_left);
+      pwm_right = std::max(0, pwm_right);
+    }
+
+    // Enforce minimum PWM so neither wheel stalls in the motor deadband
+    if (pwm_left > 0 && pwm_left < min_pwm_) pwm_left = min_pwm_;
+    if (pwm_left < 0 && pwm_left > -min_pwm_) pwm_left = -min_pwm_;
+    if (pwm_right > 0 && pwm_right < min_pwm_) pwm_right = min_pwm_;
+    if (pwm_right < 0 && pwm_right > -min_pwm_) pwm_right = -min_pwm_;
+
     send_motor_command(pwm_left, pwm_right);
   }
 
@@ -339,6 +353,7 @@ private:
   double telemetry_rate_hz_;
   double left_gain_, right_gain_;
   bool left_reversed_, right_reversed_;
+  int min_pwm_;
 
   // Serial state
   int serial_fd_;

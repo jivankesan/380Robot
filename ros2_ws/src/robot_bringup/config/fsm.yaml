@@ -6,7 +6,7 @@ task_fsm_node:
     detection_confidence_threshold: 0.5
 
     # Detection stability (frames before transition)
-    detection_stability_frames: 5
+    detection_stability_frames: 15
 
     # Target centering tolerance (normalized, 0-1 from center)
     target_center_tolerance_x: 0.15
@@ -27,8 +27,11 @@ task_fsm_node:
     use_time_based_return: true
     return_time_s: 10.0
 
+    # Minimum time to stay in APPROACH_TARGET before falling back to search
+    min_approach_dwell_s: 2.0
+
     # Line loss handling
-    line_loss_timeout_s: 3.0
+    line_loss_timeout_s: 0.5
 
     # State machine rate
     rate_hz: 20.0

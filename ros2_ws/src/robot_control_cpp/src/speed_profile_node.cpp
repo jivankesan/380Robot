@@ -21,7 +21,8 @@ public:
     // Declare parameters
     this->declare_parameter("v_max", 0.5);
     this->declare_parameter("v_min", 0.1);
-    this->declare_parameter("a_max", 0.5);
+    this->declare_parameter("a_max_accel", 2.0);
+    this->declare_parameter("a_max_decel", 4.0);
     this->declare_parameter("alpha_max", 2.0);
     this->declare_parameter("curvature_slowdown_gain", 0.3);
     this->declare_parameter("error_slowdown_gain", 0.5);
@@ -31,7 +32,8 @@ public:
     // Get parameters
     v_max_ = this->get_parameter("v_max").as_double();
     v_min_ = this->get_parameter("v_min").as_double();
-    a_max_ = this->get_parameter("a_max").as_double();
+    a_max_accel_ = this->get_parameter("a_max_accel").as_double();
+    a_max_decel_ = this->get_parameter("a_max_decel").as_double();
     alpha_max_ = this->get_parameter("alpha_max").as_double();
     k_curvature_ = this->get_parameter("curvature_slowdown_gain").as_double();
     k_error_ = this->get_parameter("error_slowdown_gain").as_double();
@@ -100,8 +102,9 @@ private:
     // Clamp target
     v_target = std::clamp(v_target, v_min_, v_max_);
 
-    // Apply trapezoidal rate limiting to linear velocity
-    double dv_max = a_max_ * dt;
+    // Apply asymmetric rate limiting: hard brake into turns, quick ramp on straights
+    double a_limit = (v_target < v_cmd_) ? a_max_decel_ : a_max_accel_;
+    double dv_max = a_limit * dt;
     double dv = std::clamp(v_target - v_cmd_, -dv_max, dv_max);
     v_cmd_ = std::clamp(v_cmd_ + dv, 0.0, v_max_);
 
@@ -110,9 +113,10 @@ private:
     double domega = std::clamp(raw_omega_ - omega_cmd_, -domega_max, domega_max);
     omega_cmd_ += domega;
 
-    // If raw velocity is zero (stopped), allow faster deceleration
+    // If raw velocity is zero (stopped), snap both v and omega to zero immediately
     if (raw_v_ <= 0.0) {
-      v_cmd_ = std::max(0.0, v_cmd_ - 2.0 * dv_max);
+      v_cmd_ = 0.0;
+      omega_cmd_ = 0.0;
     }
 
     // Publish limited command
@@ -124,7 +128,7 @@ private:
 
   // Parameters
   double v_max_, v_min_;
-  double a_max_, alpha_max_;
+  double a_max_accel_, a_max_decel_, alpha_max_;
   double k_curvature_, k_error_, k_heading_;
   double rate_hz_;
 

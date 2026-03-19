@@ -30,3 +30,7 @@ serial_bridge_node:
     # Reverse motor direction if needed
     left_motor_reversed: false
     right_motor_reversed: false
+
+    # Minimum PWM to guarantee both wheels overcome static friction / deadband.
+    # Raise if the inner wheel stalls during turns. Typical range: 50-80.
+    min_pwm: 20
