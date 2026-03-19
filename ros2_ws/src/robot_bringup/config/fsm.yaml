@@ -11,7 +11,7 @@ task_fsm_node:
     # w is the normalized bounding-box width (0=not visible, 1=fills full frame width).
     # Increase this value to stop farther away; decrease to get closer.
     # At w=0.57 the robot stopped ~10cm too far. Raise toward 0.75-0.80 to get closer.
-    approach_stop_w: 0.62
+    approach_stop_w: 0.95
 
     # ── Pickup sequence timing (seconds) ────────────────────────────────────
     pickup_stop_dwell_s: 0.4    # publish zero velocity for this long
