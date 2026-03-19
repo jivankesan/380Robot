@@ -352,11 +352,11 @@ private:
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
         "TURN_AROUND: spinning %.1f / %.1f s", t, turn_around_time_);
 
-    // Spin for the full turn_around_time_s before transitioning — this ensures
-    // a complete 180° regardless of whether the line is briefly visible.
+    // Spin for the full turn_around_time_s before transitioning -- this ensures
+    // a complete 180 deg regardless of whether the line is briefly visible.
     if (t >= turn_around_time_) {
       RCLCPP_INFO(this->get_logger(),
-          "180° complete after %.1f s — resuming line follow", t);
+          "180 deg complete after %.1f s -- resuming line follow", t);
       last_line_valid_time_ = this->now();
       transition_to(State::RETURN_FOLLOW_LINE);
     }
