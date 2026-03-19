@@ -33,4 +33,4 @@ serial_bridge_node:
 
     # Minimum PWM to guarantee both wheels overcome static friction / deadband.
     # Raise if the inner wheel stalls during turns. Typical range: 50-80.
-    min_pwm: 60
+    min_pwm: 40
