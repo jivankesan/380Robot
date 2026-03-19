@@ -31,7 +31,7 @@ task_fsm_node:
     min_approach_dwell_s: 2.0
 
     # Line loss handling
-    line_loss_timeout_s: 3.0
+    line_loss_timeout_s: 0.5
 
     # State machine rate
     rate_hz: 20.0

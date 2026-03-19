@@ -5,8 +5,8 @@ line_follow_controller_node:
     control_rate_hz: 100.0
 
     # PD gains for lateral error
-    kp_lateral: 6.5
-    kd_lateral: 1.8
+    kp_lateral: 6.9
+    kd_lateral: 1.9
 
     # PD gains for heading error
     kp_heading: 4.2
@@ -27,7 +27,7 @@ line_follow_controller_node:
     turn_omega_deadband_rps: 0.05
 
     # Lost line timeout (seconds)
-    lost_line_timeout_s: 2.0
+    lost_line_timeout_s: 0.2
 
 speed_profile_node:
   ros__parameters:
