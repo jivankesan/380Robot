@@ -76,6 +76,7 @@ public:
     this->declare_parameter("drop_open_time_s", 1.0);
     this->declare_parameter("use_time_based_return", true);
     this->declare_parameter("return_time_s", 10.0);
+    this->declare_parameter("min_approach_dwell_s", 2.0);
     this->declare_parameter("line_loss_timeout_s", 3.0);
     this->declare_parameter("rate_hz", 20.0);
 
@@ -91,6 +92,7 @@ public:
     drop_open_time_ = this->get_parameter("drop_open_time_s").as_double();
     use_time_return_ = this->get_parameter("use_time_based_return").as_bool();
     return_time_ = this->get_parameter("return_time_s").as_double();
+    min_approach_dwell_ = this->get_parameter("min_approach_dwell_s").as_double();
     line_loss_timeout_ = this->get_parameter("line_loss_timeout_s").as_double();
     rate_hz_ = this->get_parameter("rate_hz").as_double();
 
@@ -264,9 +266,10 @@ private:
     enable_pub_->publish(enable_msg);
 
     auto target = find_target();
+    double dwell_time = (this->now() - state_start_time_).seconds();
     if (!target.has_value()) {
       detection_count_++;
-      if (detection_count_ > stability_frames_ * 2) {
+      if (dwell_time > min_approach_dwell_ && detection_count_ > stability_frames_ * 2) {
         RCLCPP_WARN(this->get_logger(), "Lost target, returning to search");
         transition_to(State::FOLLOW_LINE_SEARCH);
       }
@@ -386,6 +389,7 @@ private:
   double drop_open_time_;
   bool use_time_return_;
   double return_time_;
+  double min_approach_dwell_;
   double line_loss_timeout_;
   double rate_hz_;
 
