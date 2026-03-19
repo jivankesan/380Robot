@@ -11,7 +11,7 @@ task_fsm_node:
     # cy is normalized 0 (top) to 1 (bottom of frame).
     # Increase this value to stop farther away; decrease to get closer.
     # Start with 0.62 and adjust 0.05 at a time based on where the robot stops.
-    approach_stop_cy: 0.62
+    approach_stop_cy: 0.45
 
     # ── Pickup sequence timing (seconds) ────────────────────────────────────
     pickup_stop_dwell_s: 0.4    # publish zero velocity for this long
