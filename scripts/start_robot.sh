@@ -40,7 +40,7 @@ fi
 
 # Build and launch inside the container (skip camera_node — it runs natively)
 echo -e "${YELLOW}Building ROS workspace and launching robot...${NC}"
-docker exec -it 380robot-dev bash -c "
+docker exec -it -u "$(id -u):$(id -g)" 380robot-dev bash -c "
   source /opt/ros/jazzy/setup.bash && \
   cd /workspaces/380Robot/ros2_ws && \
   colcon build --symlink-install && \
