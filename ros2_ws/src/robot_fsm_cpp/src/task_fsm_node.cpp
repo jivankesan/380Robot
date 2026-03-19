@@ -195,6 +195,9 @@ private:
     current_state_    = new_state;
     state_start_time_ = this->now();
     detection_count_  = 0;
+    if (new_state == State::FAILSAFE_STOP) {
+      claw_gripper(0.0);  // open gripper once on entry, not every tick
+    }
   }
 
   // ── Main loop ─────────────────────────────────────────────────────────────
@@ -392,7 +395,6 @@ private:
 
   void handle_failsafe() {
     set_drive_enable(false);
-    claw_gripper(0.0);   // open gripper for safety
   }
 
   std::optional<robot_interfaces::msg::Detection2D> find_target() {
