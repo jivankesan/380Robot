@@ -36,7 +36,7 @@ speed_profile_node:
 
     # Acceleration limits (m/s^2) — asymmetric for hard braking into turns
     a_max_accel: 2.0
-    a_max_decel: 4.0
+    a_max_decel: 3.0
 
     # Angular acceleration limit (rad/s^2)
     alpha_max: 2.0
