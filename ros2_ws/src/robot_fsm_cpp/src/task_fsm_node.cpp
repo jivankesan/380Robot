@@ -145,6 +145,8 @@ public:
     current_state_         = State::INIT;
     detection_count_       = 0;
     drop_detection_count_  = 0;
+    pickup_phase_          = -1;
+    drop_phase_            = -1;
     state_start_time_      = this->now();
     line_valid_            = false;
     last_line_valid_time_  = this->now();
@@ -235,13 +237,18 @@ private:
 
   void transition_to(State new_state) {
     if (new_state == current_state_) return;
-    RCLCPP_INFO(this->get_logger(), "State: %s -> %s",
+    RCLCPP_INFO(this->get_logger(), ">>> %s -> %s",
         state_to_string(current_state_).c_str(),
         state_to_string(new_state).c_str());
     current_state_        = new_state;
     state_start_time_     = this->now();
     detection_count_      = 0;
     drop_detection_count_ = 0;
+    pickup_phase_         = -1;
+    drop_phase_           = -1;
+    if (new_state == State::FAILSAFE_STOP) {
+      claw_gripper(0.0);  // open gripper once on entry, not every tick
+    }
   }
 
   // ── Main loop ─────────────────────────────────────────────────────────────
@@ -359,36 +366,42 @@ private:
     set_drive_enable(false);
     double t = (this->now() - state_start_time_).seconds();
 
-    // Phase 1: stop wheels
+    // Phase 0: stop wheels
     if (t < pickup_stop_dwell_) {
       publish_twist(0.0, 0.0);
-      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
-          "PICKUP stop (%.2f/%.2f s)", t, pickup_stop_dwell_);
+      if (pickup_phase_ != 0) {
+        RCLCPP_INFO(this->get_logger(), "[PICKUP] Stopping wheels before grab");
+        pickup_phase_ = 0;
+      }
       return;
     }
 
-    // Phase 2: close gripper
+    // Phase 1: close gripper
     double close_end = pickup_stop_dwell_ + pickup_close_time_;
     if (t < close_end) {
       publish_twist(0.0, 0.0);
       claw_gripper(1.0);
-      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 400,
-          "PICKUP closing gripper (%.2f/%.2f s)", t, close_end);
+      if (pickup_phase_ != 1) {
+        RCLCPP_INFO(this->get_logger(), "[PICKUP] Closing gripper — grabbing target");
+        pickup_phase_ = 1;
+      }
       return;
     }
 
-    // Phase 3: rotate claw to carry position
+    // Phase 2: rotate claw to carry position
     double rotate_end = close_end + pickup_rotate_time_;
     if (t < rotate_end) {
       publish_twist(0.0, 0.0);
       claw_gripper(1.0);
       claw_rotation(1.0);
-      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 400,
-          "PICKUP rotating claw (%.2f/%.2f s)", t, rotate_end);
+      if (pickup_phase_ != 2) {
+        RCLCPP_INFO(this->get_logger(), "[PICKUP] Rotating claw to carry position");
+        pickup_phase_ = 2;
+      }
       return;
     }
 
-    RCLCPP_INFO(this->get_logger(), "Pickup complete — turning around");
+    RCLCPP_INFO(this->get_logger(), "[PICKUP] Complete — target secured");
     last_line_valid_time_ = this->now();
     transition_to(State::TURN_AROUND);
   }
@@ -400,12 +413,13 @@ private:
     publish_twist(0.0, turn_around_omega_);
 
     double t = (this->now() - state_start_time_).seconds();
-    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-        "TURN_AROUND %.1f / %.1f s", t, turn_around_time_);
+    if (pickup_phase_ != 99) {
+      RCLCPP_INFO(this->get_logger(), "[TURN] Spinning 180 deg (%.1f s)", turn_around_time_);
+      pickup_phase_ = 99;  // reuse as turn-started flag
+    }
 
     if (t >= turn_around_time_) {
-      RCLCPP_INFO(this->get_logger(),
-          "180 complete — following line back, watching for green box");
+      RCLCPP_INFO(this->get_logger(), "[TURN] 180 complete — returning to line");
       last_line_valid_time_ = this->now();
       transition_to(State::RETURN_FOLLOW_LINE);
     }
@@ -478,28 +492,32 @@ private:
     set_drive_enable(false);
     double t = (this->now() - state_start_time_).seconds();
 
-    // Phase 1: rotate claw to horizontal (level) before opening
+    // Phase 0: rotate claw to horizontal (level) before opening
     if (t < drop_rotate_time_) {
       publish_twist(0.0, 0.0);
       claw_gripper(1.0);   // keep closed while rotating
       claw_rotation(0.0);  // rotate to horizontal
-      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
-          "DROP: rotating claw horizontal (%.2f/%.2f s)", t, drop_rotate_time_);
+      if (drop_phase_ != 0) {
+        RCLCPP_INFO(this->get_logger(), "[DROP] Rotating claw to horizontal");
+        drop_phase_ = 0;
+      }
       return;
     }
 
-    // Phase 2: open gripper to release payload
+    // Phase 1: open gripper to release payload
     double open_end = drop_rotate_time_ + drop_open_time_;
     if (t < open_end) {
       publish_twist(0.0, 0.0);
       claw_gripper(0.0);
       claw_rotation(0.0);
-      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 400,
-          "DROP: opening gripper (%.2f/%.2f s)", t, open_end);
+      if (drop_phase_ != 1) {
+        RCLCPP_INFO(this->get_logger(), "[DROP] Opening gripper — releasing payload");
+        drop_phase_ = 1;
+      }
       return;
     }
 
-    RCLCPP_INFO(this->get_logger(), "Drop complete — reversing to red line");
+    RCLCPP_INFO(this->get_logger(), "[DROP] Complete — reversing to red line");
     transition_to(State::REVERSE_TO_LINE);
   }
 
@@ -592,6 +610,8 @@ private:
   rclcpp::Time       state_start_time_;
   int                detection_count_;
   int                drop_detection_count_;
+  int                pickup_phase_;   // -1 = not started; tracks phase within PICKUP/TURN_AROUND
+  int                drop_phase_;     // -1 = not started; tracks phase within DROP
   robot_interfaces::msg::Detections2D latest_detections_;
   bool               line_valid_;
   rclcpp::Time       last_line_valid_time_;
