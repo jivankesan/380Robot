@@ -1,4 +1,5 @@
 # Controller configuration
+# Latest working configuration
 line_follow_controller_node:
   ros__parameters:
     # Control rate
