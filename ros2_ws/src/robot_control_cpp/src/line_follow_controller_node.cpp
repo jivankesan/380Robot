@@ -10,6 +10,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "robot_interfaces/msg/line_observation.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 using namespace std::chrono_literals;
 
@@ -51,13 +52,22 @@ public:
     last_heading_error_ = 0.0;
     line_valid_ = false;
     last_valid_time_ = this->now();
+    enabled_ = true;  // enabled by default; FSM sets false during APPROACH_TARGET
 
-    // Subscriber
+    // Subscribers
     line_sub_ = this->create_subscription<robot_interfaces::msg::LineObservation>(
         "/vision/line_observation",
         10,
         std::bind(
             &LineFollowControllerNode::line_callback,
+            this,
+            std::placeholders::_1));
+
+    enable_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+        "/control/enable",
+        10,
+        std::bind(
+            &LineFollowControllerNode::enable_callback,
             this,
             std::placeholders::_1));
 
@@ -74,6 +84,10 @@ public:
   }
 
 private:
+  void enable_callback(const std_msgs::msg::Bool::SharedPtr msg) {
+    enabled_ = msg->data;
+  }
+
   void line_callback(const robot_interfaces::msg::LineObservation::SharedPtr msg) {
     latest_observation_ = *msg;
     line_valid_ = msg->valid;
@@ -86,6 +100,12 @@ private:
     geometry_msgs::msg::Twist cmd;
     cmd.linear.x = 0.0;
     cmd.angular.z = 0.0;
+
+    // When disabled (e.g. blue circle approach), publish nothing so the
+    // blue circle controller has sole ownership of /control/cmd_vel.
+    if (!enabled_) {
+      return;
+    }
 
     // Check for line timeout
     double time_since_valid = (this->now() - last_valid_time_).seconds();
@@ -148,10 +168,12 @@ private:
   double last_lateral_error_;
   double last_heading_error_;
   bool line_valid_;
+  bool enabled_;
   rclcpp::Time last_valid_time_;
 
   // ROS interfaces
   rclcpp::Subscription<robot_interfaces::msg::LineObservation>::SharedPtr line_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr enable_sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
 };

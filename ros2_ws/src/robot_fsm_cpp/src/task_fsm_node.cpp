@@ -65,7 +65,7 @@ class TaskFsmNode : public rclcpp::Node {
 public:
   TaskFsmNode() : Node("task_fsm_node") {
     // Declare parameters
-    this->declare_parameter("target_class", "lego_person");
+    this->declare_parameter("target_class", "blue_circle");
     this->declare_parameter("detection_confidence_threshold", 0.5);
     this->declare_parameter("detection_stability_frames", 5);
     this->declare_parameter("target_center_tolerance_x", 0.15);
@@ -181,10 +181,13 @@ private:
     state_msg.data = state_to_string(current_state_);
     state_pub_->publish(state_msg);
 
-    // Check for line loss (except in states where it's expected)
+    // Check for line loss (except in states where it's expected).
+    // APPROACH_TARGET is excluded: the line detector intentionally marks the
+    // line invalid once the blue circle is detected, so loss here is normal.
     if (current_state_ != State::INIT && current_state_ != State::PICKUP &&
         current_state_ != State::DROP && current_state_ != State::DONE &&
-        current_state_ != State::FAILSAFE_STOP) {
+        current_state_ != State::FAILSAFE_STOP &&
+        current_state_ != State::APPROACH_TARGET) {
       double line_loss_time = (this->now() - last_line_valid_time_).seconds();
       if (line_loss_time > line_loss_timeout_) {
         RCLCPP_WARN(this->get_logger(), "Line lost for too long, entering failsafe");
@@ -250,19 +253,28 @@ private:
     auto target = find_target();
     if (target.has_value()) {
       detection_count_++;
+      RCLCPP_INFO_THROTTLE(
+          this->get_logger(), *this->get_clock(), 500,
+          "Blue circle seen (cx=%.2f score=%.2f) — stable count %d/%d",
+          target->cx, target->score, detection_count_, stability_frames_);
       if (detection_count_ >= stability_frames_) {
-        RCLCPP_INFO(this->get_logger(), "Target detected and stable, approaching");
+        RCLCPP_INFO(this->get_logger(),
+            "Blue circle locked — switching to approach (line follow disabled)");
         transition_to(State::APPROACH_TARGET);
       }
     } else {
+      if (detection_count_ > 0) {
+        RCLCPP_WARN(this->get_logger(), "Blue circle lost during search, resetting count");
+      }
       detection_count_ = 0;
     }
   }
 
   void handle_approach_target() {
-    // Keep controller enabled
+    // Disable the line follow controller — the blue circle controller takes
+    // over publishing to /control/cmd_vel in this state.
     std_msgs::msg::Bool enable_msg;
-    enable_msg.data = true;
+    enable_msg.data = false;
     enable_pub_->publish(enable_msg);
 
     auto target = find_target();
@@ -282,8 +294,15 @@ private:
     bool centered = std::abs(target->cx - 0.5) < center_tol_x_ &&
                     std::abs(target->cy - 0.5) < center_tol_y_;
 
+    RCLCPP_INFO_THROTTLE(
+        this->get_logger(), *this->get_clock(), 300,
+        "Approaching blue circle — cx=%.2f size=%.2f  need: size>=%.2f centered=%s",
+        target->cx, size, size_close_threshold_, centered ? "YES" : "no");
+
     if (size >= size_close_threshold_ && centered) {
-      RCLCPP_INFO(this->get_logger(), "Target in range, picking up");
+      RCLCPP_INFO(this->get_logger(),
+          "Blue circle centered and close (size=%.2f cx=%.2f) — triggering pickup",
+          size, target->cx);
       transition_to(State::PICKUP);
     }
   }

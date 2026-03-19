@@ -21,6 +21,7 @@ setup(
         'console_scripts': [
             'line_detector_node = robot_vision_py.line_detector_node:main',
             'object_detector_node = robot_vision_py.object_detector_node:main',
+            'blue_circle_controller_node = robot_vision_py.blue_circle_controller_node:main',
             'dummy_camera_node = robot_vision_py.dummy_camera_node:main',
             'teleop_node = robot_vision_py.teleop_node:main',
             'mjpeg_camera_node = robot_vision_py.mjpeg_camera_node:main',

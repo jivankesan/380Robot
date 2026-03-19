@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Object detector node for 380Robot.
 
-Detects target objects (e.g., LEGO person) in camera images
-using either heuristic color detection or YOLO.
+Detects target objects (blue circle target) in camera images
+using either heuristic color + shape detection or YOLO.
 """
+
+import math
 
 import cv2
 import numpy as np
@@ -24,16 +26,18 @@ class ObjectDetectorNode(Node):
 
         # Declare parameters
         self.declare_parameter('detector_type', 'heuristic')
-        self.declare_parameter('target_class', 'lego_person')
+        self.declare_parameter('target_class', 'blue_circle')
         self.declare_parameter('confidence_threshold', 0.5)
-        self.declare_parameter('heuristic_h_min', 15)
-        self.declare_parameter('heuristic_h_max', 35)
+        # Blue circle HSV parameters
+        self.declare_parameter('heuristic_h_min', 90)
+        self.declare_parameter('heuristic_h_max', 130)
         self.declare_parameter('heuristic_s_min', 100)
         self.declare_parameter('heuristic_s_max', 255)
-        self.declare_parameter('heuristic_v_min', 100)
+        self.declare_parameter('heuristic_v_min', 50)
         self.declare_parameter('heuristic_v_max', 255)
-        self.declare_parameter('heuristic_min_area', 200)
-        self.declare_parameter('heuristic_max_area', 50000)
+        self.declare_parameter('heuristic_min_area', 2000)
+        self.declare_parameter('heuristic_max_area', 200000)
+        self.declare_parameter('heuristic_circularity_min', 0.4)
         self.declare_parameter('model_path', '')
         self.declare_parameter('device', 'cpu')
         self.declare_parameter('detection_rate_hz', 10.0)
@@ -50,6 +54,7 @@ class ObjectDetectorNode(Node):
         self.v_max = self.get_parameter('heuristic_v_max').value
         self.min_area = self.get_parameter('heuristic_min_area').value
         self.max_area = self.get_parameter('heuristic_max_area').value
+        self.circularity_min = self.get_parameter('heuristic_circularity_min').value
         self.model_path = self.get_parameter('model_path').value
         self.device = self.get_parameter('device').value
         detection_rate = self.get_parameter('detection_rate_hz').value
@@ -123,20 +128,20 @@ class ObjectDetectorNode(Node):
         self.det_pub.publish(det_msg)
 
     def _detect_heuristic(self, image: np.ndarray) -> list:
-        """Detect objects using color-based heuristic."""
+        """Detect blue circle using HSV color + circularity filter."""
         detections = []
         height, width = image.shape[:2]
 
         # Convert to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        # Threshold for target color
+        # Threshold for blue
         lower = np.array([self.h_min, self.s_min, self.v_min])
         upper = np.array([self.h_max, self.s_max, self.v_max])
         mask = cv2.inRange(hsv, lower, upper)
 
-        # Morphological operations
-        kernel = np.ones((5, 5), np.uint8)
+        # Morphological cleanup with ellipse kernel for circular shapes
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
@@ -147,24 +152,40 @@ class ObjectDetectorNode(Node):
             cv2.CHAIN_APPROX_SIMPLE
         )
 
+        best_det = None
+        best_area = 0
+
         for contour in contours:
             area = cv2.contourArea(contour)
-            if self.min_area <= area <= self.max_area:
-                x, y, w, h = cv2.boundingRect(contour)
+            if area < self.min_area or area > self.max_area:
+                continue
 
-                # Create detection
-                det = Detection2D()
-                det.class_name = self.target_class
-                # Confidence based on area (simple heuristic)
-                det.score = float(min(1.0, area / self.max_area + 0.5))
-                # Normalized coordinates
-                det.cx = float((x + w / 2) / width)
-                det.cy = float((y + h / 2) / height)
-                det.w = float(w / width)
-                det.h = float(h / height)
+            # Circularity filter: 4*pi*area / perimeter^2 (1.0 = perfect circle)
+            perimeter = cv2.arcLength(contour, True)
+            if perimeter < 1.0:
+                continue
+            circularity = 4.0 * math.pi * area / (perimeter * perimeter)
+            if circularity < self.circularity_min:
+                continue
 
-                if det.score >= self.conf_threshold:
-                    detections.append(det)
+            x, y, w, h = cv2.boundingRect(contour)
+
+            det = Detection2D()
+            det.class_name = self.target_class
+            # Confidence: blend circularity and area coverage
+            det.score = float(min(1.0, circularity * 0.6 + min(1.0, area / 30000.0) * 0.4))
+            det.cx = float((x + w / 2) / width)
+            det.cy = float((y + h / 2) / height)
+            det.w = float(w / width)
+            det.h = float(h / height)
+
+            # Keep the largest (most prominent) blue circle
+            if det.score >= self.conf_threshold and area > best_area:
+                best_area = area
+                best_det = det
+
+        if best_det is not None:
+            detections.append(best_det)
 
         return detections
 

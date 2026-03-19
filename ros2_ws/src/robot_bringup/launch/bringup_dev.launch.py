@@ -76,11 +76,19 @@ def generate_launch_description():
             parameters=[vision_config],
         ),
 
-        # Vision: Object detector
+        # Vision: Object detector (blue circle)
         Node(
             package='robot_vision_py',
             executable='object_detector_node',
             name='object_detector_node',
+            parameters=[vision_config],
+        ),
+
+        # Control: Blue circle approach controller
+        Node(
+            package='robot_vision_py',
+            executable='blue_circle_controller_node',
+            name='blue_circle_controller_node',
             parameters=[vision_config],
         ),
 

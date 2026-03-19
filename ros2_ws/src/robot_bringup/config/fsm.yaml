@@ -2,18 +2,20 @@
 task_fsm_node:
   ros__parameters:
     # Target object settings
-    target_class: "lego_person"
-    detection_confidence_threshold: 0.5
+    target_class: "blue_circle"
+    detection_confidence_threshold: 0.45
 
     # Detection stability (frames before transition)
-    detection_stability_frames: 15
+    # Fewer frames needed — circle is large and easy to lock onto
+    detection_stability_frames: 8
 
     # Target centering tolerance (normalized, 0-1 from center)
     target_center_tolerance_x: 0.15
-    target_center_tolerance_y: 0.2
+    target_center_tolerance_y: 0.25
 
-    # Target size threshold for "close enough" (normalized)
-    target_size_close_threshold: 0.25
+    # Target size threshold for "close enough" (normalized width).
+    # Circle needs to fill ~40% of frame width before pickup.
+    target_size_close_threshold: 0.40
 
     # Pickup timing (seconds)
     pickup_close_time_s: 1.0

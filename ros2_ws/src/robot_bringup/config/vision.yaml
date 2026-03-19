@@ -42,24 +42,40 @@ object_detector_node:
     detector_type: "heuristic"
 
     # Target class to detect
-    target_class: "lego_person"
+    target_class: "blue_circle"
 
     # Confidence threshold
-    confidence_threshold: 0.5
+    confidence_threshold: 0.45
 
-    # Heuristic detector settings (for LEGO person - typically yellow/red)
-    heuristic_h_min: 15
-    heuristic_h_max: 35
+    # Blue circle HSV settings
+    # Blue in HSV: H=[90,130], high saturation, any brightness
+    heuristic_h_min: 90
+    heuristic_h_max: 130
     heuristic_s_min: 100
     heuristic_s_max: 255
-    heuristic_v_min: 100
+    heuristic_v_min: 50
     heuristic_v_max: 255
-    heuristic_min_area: 200
-    heuristic_max_area: 50000
+    heuristic_min_area: 2000
+    heuristic_max_area: 200000
+    # Circularity: 1.0 = perfect circle, reject blobs below this
+    heuristic_circularity_min: 0.4
 
     # YOLO settings (if using yolo detector)
     model_path: ""
     device: "cpu"
 
     # Rate limiting
-    detection_rate_hz: 10.0
+    detection_rate_hz: 15.0
+
+blue_circle_controller_node:
+  ros__parameters:
+    target_class: "blue_circle"
+    # Proportional gain for horizontal centering (angular_z = -kp * (cx - 0.5))
+    kp_angular: 1.8
+    # Slow forward speed while approaching
+    linear_speed_mps: 0.12
+    max_angular_rps: 1.2
+    center_tolerance_x: 0.12
+    # Stop publishing if no detection for this many seconds
+    detection_timeout_s: 0.5
+    rate_hz: 20.0
