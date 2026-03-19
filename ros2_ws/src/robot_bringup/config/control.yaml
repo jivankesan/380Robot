@@ -9,7 +9,7 @@ line_follow_controller_node:
     kd_lateral: 1.3
 
     # PD gains for heading error
-    kp_heading: 3.5
+    kp_heading: 3.8
     kd_heading: 1.1
 
     # Speed limits (m/s)
