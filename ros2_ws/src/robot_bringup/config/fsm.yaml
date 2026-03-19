@@ -5,7 +5,7 @@ task_fsm_node:
     target_class: "blue_circle"
     detection_confidence_threshold: 0.45
     detection_stability_frames: 8
-    target_center_tolerance_x: 0.12
+    target_center_tolerance_x: 0.20
 
     # When to stop the approach and begin pickup.
     # cy is normalized 0 (top) to 1 (bottom of frame).
