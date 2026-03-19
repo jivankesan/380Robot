@@ -18,13 +18,15 @@ task_fsm_node:
     target_size_close_threshold: 0.40
 
     # Pickup sequence timing (seconds)
-    pickup_stop_dwell_s: 0.4    # wait for motors to stop
+    pickup_stop_dwell_s: 0.4    # actively publish M,0,0 for this long
     pickup_close_time_s: 1.0    # time to close gripper (servo 2)
-    pickup_rotate_time_s: 0.5   # time to rotate to carry position (servo 1)
+    pickup_rotate_time_s: 0.5   # time to rotate claw to carry position (servo 1)
 
-    # Turn-around after pickup — spin in place to face back down the line
-    turn_around_omega_rps: 1.5  # rotation speed (rad/s), positive = left turn
-    turn_around_time_s: 2.5     # tune until robot completes ~180°
+    # Spin after pickup until red line is detected again.
+    # Positive = left turn, negative = right turn.
+    # A 0.5 s blind window is enforced before checking for line.
+    turn_around_omega_rps: 1.5
+    turn_around_time_s: 4.2     # fallback only — not used for exit condition
 
     # Drop timing (seconds)
     drop_open_time_s: 1.0

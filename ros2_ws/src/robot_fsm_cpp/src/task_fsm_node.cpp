@@ -305,33 +305,37 @@ private:
     set_drive_enable(false);
     double t = (this->now() - state_start_time_).seconds();
 
-    // Phase 1: wait for motors to stop
+    // Phase 1: stop wheels — actively publish Twist(0,0)
     if (t < pickup_stop_dwell_) {
+      publish_turn(0.0);
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
-          "PICKUP: waiting for stop (%.2f / %.2f s)", t, pickup_stop_dwell_);
+          "PICKUP: stopping wheels (%.2f / %.2f s)", t, pickup_stop_dwell_);
       return;
     }
 
     // Phase 2: close gripper (servo 2)
     double close_end = pickup_stop_dwell_ + pickup_close_time_;
     if (t < close_end) {
+      publish_turn(0.0);
       claw_gripper(1.0);
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 400,
           "PICKUP: closing gripper (%.2f / %.2f s)", t, close_end);
       return;
     }
 
-    // Phase 3: rotate to carry position (servo 1)
+    // Phase 3: rotate claw to carry position (servo 1)
     double rotate_end = close_end + pickup_rotate_time_;
     if (t < rotate_end) {
-      claw_gripper(1.0);   // keep gripper closed
-      claw_rotation(1.0);  // rotate to carry
+      publish_turn(0.0);
+      claw_gripper(1.0);
+      claw_rotation(1.0);
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 400,
-          "PICKUP: rotating to carry (%.2f / %.2f s)", t, rotate_end);
+          "PICKUP: rotating claw to carry (%.2f / %.2f s)", t, rotate_end);
       return;
     }
 
-    RCLCPP_INFO(this->get_logger(), "Pickup complete — turning around to find line");
+    RCLCPP_INFO(this->get_logger(), "Pickup complete — spinning to find red line");
+    last_line_valid_time_ = this->now();  // reset so spin doesn't immediately exit
     transition_to(State::TURN_AROUND);
   }
 
@@ -340,16 +344,25 @@ private:
     claw_gripper(1.0);   // keep gripper closed
     claw_rotation(1.0);  // keep carry position
 
-    // Spin in place to face back down the line
+    // Spin in place until the line detector sees the red line again
     publish_turn(turn_around_omega_);
 
     double t = (this->now() - state_start_time_).seconds();
-    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-        "TURN_AROUND: %.1f / %.1f s", t, turn_around_time_);
 
-    if (t >= turn_around_time_) {
-      RCLCPP_INFO(this->get_logger(), "Turn complete — resuming line follow");
-      // Give RETURN a fresh line-loss window
+    // Require a short minimum spin so we don't re-detect the line
+    // we just left before completing the turn (~0.5 s blind window)
+    if (t < 0.5) {
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
+          "TURN_AROUND: blind window (%.2f s)", t);
+      return;
+    }
+
+    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+        "TURN_AROUND: spinning, looking for red line (%.1f s)", t);
+
+    if (line_valid_) {
+      RCLCPP_INFO(this->get_logger(),
+          "Red line found after %.1f s — resuming line follow", t);
       last_line_valid_time_ = this->now();
       transition_to(State::RETURN_FOLLOW_LINE);
     }
