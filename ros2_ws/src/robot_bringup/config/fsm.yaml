@@ -23,8 +23,12 @@ task_fsm_node:
     # High omega forces one wheel hard forward, other hard backward (spin in place).
     # For 180 deg: time = pi / omega. At 4.0 rad/s -> ~0.8 s ideal; add slip margin -> 1.5 s.
     # If it over-rotates, reduce time_s. If under-rotates, increase time_s.
+    # Pivot turn: inner wheel stops, outer wheel runs full forward.
+    # linear = omega * wheelbase/2 = 4.0 * 0.075 = 0.30 keeps inner wheel at exactly 0.
+    # Positive omega = left turn (right wheel drives). Adjust time_s for ~180 deg.
     turn_around_omega_rps: 4.0
-    turn_around_time_s: 1.5
+    turn_around_linear_mps: 0.30
+    turn_around_time_s: 2.0
 
     # ── Drop target (green box) ──────────────────────────────────────────────
     drop_target_class: "green_box"

@@ -84,8 +84,12 @@ public:
     this->declare_parameter("pickup_rotate_time_s", 0.5);
 
     // ── Turn around ──────────────────────────────────────────────────────────
-    this->declare_parameter("turn_around_omega_rps", 1.5);
-    this->declare_parameter("turn_around_time_s", 4.2);
+    // Hardware cannot run motors in opposite directions simultaneously.
+    // Set linear = omega * wheelbase/2 so the inner wheel computes to exactly 0
+    // and the outer wheel runs at full forward speed — a clean pivot turn.
+    this->declare_parameter("turn_around_omega_rps", 4.0);
+    this->declare_parameter("turn_around_linear_mps", 0.30);
+    this->declare_parameter("turn_around_time_s", 2.0);
 
     // ── Drop target (green box) ──────────────────────────────────────────────
     this->declare_parameter("drop_target_class", "green_box");
@@ -121,6 +125,7 @@ public:
     pickup_rotate_time_    = this->get_parameter("pickup_rotate_time_s").as_double();
 
     turn_around_omega_     = this->get_parameter("turn_around_omega_rps").as_double();
+    turn_around_linear_    = this->get_parameter("turn_around_linear_mps").as_double();
     turn_around_time_      = this->get_parameter("turn_around_time_s").as_double();
 
     drop_class_            = this->get_parameter("drop_target_class").as_string();
@@ -422,7 +427,7 @@ private:
     set_drive_enable(false);
     claw_gripper(1.0);
     claw_rotation(1.0);
-    publish_twist(0.0, turn_around_omega_);
+    publish_twist(turn_around_linear_, turn_around_omega_);
 
     double t = (this->now() - state_start_time_).seconds();
     if (pickup_phase_ != 99) {
@@ -596,6 +601,7 @@ private:
   double pickup_rotate_time_;
 
   double turn_around_omega_;
+  double turn_around_linear_;
   double turn_around_time_;
 
   std::string drop_class_;
