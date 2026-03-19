@@ -14,8 +14,8 @@ task_fsm_node:
     target_center_tolerance_y: 0.25
 
     # Target size threshold for "close enough" (normalized width).
-    # Circle needs to fill ~40% of frame width before pickup.
-    target_size_close_threshold: 0.40
+    # Circle needs to fill ~65% of frame width before pickup.
+    target_size_close_threshold: 0.65
 
     # Pickup sequence timing (seconds)
     pickup_stop_dwell_s: 0.4    # actively publish M,0,0 for this long
