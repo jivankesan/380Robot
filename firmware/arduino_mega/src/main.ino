@@ -24,8 +24,9 @@ const int RIGHT_MOTOR_IN1 = 12; // AIN1
 const int RIGHT_MOTOR_IN2 = 13; // AIN2
 const int MOTOR_STBY = 3;       // Standby - must be HIGH to enable motors
 
-// Claw servo pin
-const int CLAW_SERVO_PIN = 9;
+// Claw servo pins
+const int CLAW_ROTATION_SERVO_PIN = 10;  // Servo 1: rotation axis
+const int CLAW_GRIPPER_SERVO_PIN  = 9;   // Servo 2: open/close gripper
 
 // Battery voltage divider pin (analog)
 const int BATTERY_PIN = A0;
@@ -33,9 +34,13 @@ const int BATTERY_PIN = A0;
 // E-stop not used on Uno (pin 52 is Mega-only)
 const int ESTOP_PIN = -1;
 
-// Claw servo positions
-const int CLAW_OPEN_POS = 30;
-const int CLAW_CLOSED_POS = 120;
+// Servo 2 (gripper) angles
+const int CLAW_OPEN_POS   = 70;
+const int CLAW_CLOSED_POS = 130;
+
+// Servo 1 (rotation) angles
+const int CLAW_HORIZONTAL_POS = 20;
+const int CLAW_ROTATED_POS    = 90;
 
 // Watchdog timeout (ms)
 const unsigned long WATCHDOG_TIMEOUT = 250;
@@ -44,7 +49,8 @@ const unsigned long WATCHDOG_TIMEOUT = 250;
 const unsigned long TELEMETRY_PERIOD = 50;
 
 // Global state
-Servo clawServo;
+Servo clawRotationServo;
+Servo clawGripperServo;
 int currentLeftPWM = 0;
 int currentRightPWM = 0;
 int currentClawMode = 0;
@@ -73,9 +79,11 @@ void setup() {
   // Stop motors initially
   stopMotors();
 
-  // Claw servo
-  clawServo.attach(CLAW_SERVO_PIN);
-  clawServo.write(CLAW_OPEN_POS);
+  // Claw servos — start in open/horizontal position
+  clawRotationServo.attach(CLAW_ROTATION_SERVO_PIN);
+  clawRotationServo.write(CLAW_HORIZONTAL_POS);
+  clawGripperServo.attach(CLAW_GRIPPER_SERVO_PIN);
+  clawGripperServo.write(CLAW_OPEN_POS);
 
   // Encoders not used with Elegoo Smart Car Shield
   // (encoder pins conflict with motor driver pins on this shield)
@@ -181,23 +189,29 @@ void processClawCommand(String params) {
   currentClawMode = mode;
   currentClawPos = constrain(pos, 0, 1000);
 
-  // Map position to servo angle
-  int angle;
+  // Drive both servos based on mode
+  int gripperAngle;
+  int rotationAngle;
   switch (mode) {
-    case 0: // Open
-      angle = CLAW_OPEN_POS;
+    case 0: // Open — gripper open, rotation horizontal
+      gripperAngle  = CLAW_OPEN_POS;
+      rotationAngle = CLAW_HORIZONTAL_POS;
       break;
-    case 1: // Close
-      angle = CLAW_CLOSED_POS;
+    case 1: // Close — gripper closed, rotation rotated (carry position)
+      gripperAngle  = CLAW_CLOSED_POS;
+      rotationAngle = CLAW_ROTATED_POS;
       break;
-    case 2: // Hold (use position)
-      angle = map(currentClawPos, 0, 1000, CLAW_OPEN_POS, CLAW_CLOSED_POS);
+    case 2: // Hold — interpolate gripper, keep rotation at carry position
+      gripperAngle  = map(currentClawPos, 0, 1000, CLAW_OPEN_POS, CLAW_CLOSED_POS);
+      rotationAngle = CLAW_ROTATED_POS;
       break;
     default:
-      angle = CLAW_OPEN_POS;
+      gripperAngle  = CLAW_OPEN_POS;
+      rotationAngle = CLAW_HORIZONTAL_POS;
   }
 
-  clawServo.write(angle);
+  clawGripperServo.write(gripperAngle);
+  clawRotationServo.write(rotationAngle);
   lastCommandTime = millis();
 }
 
