@@ -5,11 +5,11 @@ line_follow_controller_node:
     control_rate_hz: 100.0
 
     # PD gains for lateral error
-    kp_lateral: 5.5
+    kp_lateral: 6.5
     kd_lateral: 1.8
 
     # PD gains for heading error
-    kp_heading: 3.8
+    kp_heading: 4.2
     kd_heading: 1.6
 
     # Speed limits (m/s)
@@ -24,7 +24,7 @@ line_follow_controller_node:
     # Higher gain = more slowdown on turns. min_turn_speed_mps is the floor.
     turn_speed_gain: 2.5
     min_turn_speed_mps: 0.14
-    turn_omega_deadband_rps: 0.15
+    turn_omega_deadband_rps: 0.05
 
     # Lost line timeout (seconds)
     lost_line_timeout_s: 2.0
