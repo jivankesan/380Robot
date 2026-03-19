@@ -13,7 +13,7 @@ line_follow_controller_node:
     kd_heading: 1.6
 
     # Speed limits (m/s)
-    base_speed_mps: 0.25
+    base_speed_mps: 0.50
     max_lin_vel_mps: 0.70
     min_lin_vel_mps: 0.08
 
@@ -22,7 +22,7 @@ line_follow_controller_node:
 
     # Turn speed reduction: v = base_speed - turn_speed_gain * abs(omega)
     # Higher gain = more slowdown on turns. min_turn_speed_mps is the floor.
-    turn_speed_gain: 1.2
+    turn_speed_gain: 2.5
     min_turn_speed_mps: 0.08
     turn_omega_deadband_rps: 0.15
 
