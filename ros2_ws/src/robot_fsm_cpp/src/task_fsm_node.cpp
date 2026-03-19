@@ -79,6 +79,7 @@ public:
     this->declare_parameter("return_time_s", 10.0);
     this->declare_parameter("min_approach_dwell_s", 2.0);
     this->declare_parameter("line_loss_timeout_s", 3.0);
+    this->declare_parameter("min_init_dwell_s", 1.5);
     this->declare_parameter("rate_hz", 20.0);
 
     // Get parameters
@@ -96,6 +97,7 @@ public:
     return_time_ = this->get_parameter("return_time_s").as_double();
     min_approach_dwell_ = this->get_parameter("min_approach_dwell_s").as_double();
     line_loss_timeout_ = this->get_parameter("line_loss_timeout_s").as_double();
+    min_init_dwell_ = this->get_parameter("min_init_dwell_s").as_double();
     rate_hz_ = this->get_parameter("rate_hz").as_double();
 
     // Initialize state
@@ -233,20 +235,30 @@ private:
     enable_msg.data = false;
     enable_pub_->publish(enable_msg);
 
-    // Ensure claw starts open
+    // Keep sending claw open every tick so the Arduino receives it even if
+    // it was still booting when the first command arrived.
     robot_interfaces::msg::ClawCommand claw_cmd;
     claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_OPEN;
     claw_cmd.position = 0.0;
     claw_pub_->publish(claw_cmd);
 
-    // Wait for line and hardware to be ready
     double wait_time = (this->now() - state_start_time_).seconds();
+
+    // Enforce a minimum dwell so the Arduino has time to boot after the
+    // serial port opens (DTR reset takes ~1 s) and so the claw open command
+    // is sent repeatedly before the mission starts.
+    if (wait_time < min_init_dwell_) {
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+          "INIT: opening claw, waiting %.1f / %.1f s",
+          wait_time, min_init_dwell_);
+      return;
+    }
+
     if (line_valid_ && hw_ready_) {
       RCLCPP_INFO(this->get_logger(), "Systems ready, starting mission");
       transition_to(State::FOLLOW_LINE_SEARCH);
     } else if (wait_time > 10.0) {
       RCLCPP_WARN(this->get_logger(), "Timeout waiting for systems");
-      // Continue anyway for development
       transition_to(State::FOLLOW_LINE_SEARCH);
     }
   }
@@ -432,6 +444,7 @@ private:
   double return_time_;
   double min_approach_dwell_;
   double line_loss_timeout_;
+  double min_init_dwell_;
   double rate_hz_;
 
   // State

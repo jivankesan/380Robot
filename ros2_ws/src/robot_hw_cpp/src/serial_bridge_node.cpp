@@ -254,6 +254,9 @@ private:
 
   void send_claw_command(uint8_t mode, float position) {
     if (serial_fd_ < 0) {
+      RCLCPP_WARN_THROTTLE(
+          this->get_logger(), *this->get_clock(), 2000,
+          "Claw command ignored — serial port not open (mode=%d pos=%.2f)", mode, position);
       return;
     }
 
@@ -262,10 +265,13 @@ private:
     ss << "C," << static_cast<int>(mode) << "," << pos_scaled << "\n";
     std::string cmd = ss.str();
 
+    RCLCPP_INFO_THROTTLE(
+        this->get_logger(), *this->get_clock(), 500,
+        "Claw -> Arduino: %s", cmd.c_str());
+
     ssize_t written = write(serial_fd_, cmd.c_str(), cmd.length());
     if (written < 0) {
-      RCLCPP_WARN_THROTTLE(
-          this->get_logger(), *this->get_clock(), 1000, "Serial write failed");
+      RCLCPP_WARN(this->get_logger(), "Serial write failed for claw command");
     }
   }
 

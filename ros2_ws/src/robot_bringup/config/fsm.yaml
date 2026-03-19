@@ -34,6 +34,11 @@ task_fsm_node:
     # Minimum time to stay in APPROACH_TARGET before falling back to search
     min_approach_dwell_s: 2.0
 
+    # Minimum time to stay in INIT before mission can start.
+    # Arduino resets when the serial port opens (DTR), takes ~1 s to boot.
+    # This ensures the claw-open command is sent and received before moving on.
+    min_init_dwell_s: 1.5
+
     # Line loss handling
     line_loss_timeout_s: 0.5
 
