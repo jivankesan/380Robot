@@ -11,7 +11,7 @@ task_fsm_node:
     # w is the normalized bounding-box width (0=not visible, 1=fills full frame width).
     # Increase this value to stop farther away; decrease to get closer.
     # At w=0.57 the robot stopped ~10cm too far. Raise toward 0.75-0.80 to get closer.
-    approach_stop_w: 0.70
+    approach_stop_w: 0.62
 
     # ── Pickup sequence timing (seconds) ────────────────────────────────────
     pickup_stop_dwell_s: 0.4    # publish zero velocity for this long
@@ -20,8 +20,11 @@ task_fsm_node:
 
     # ── Spin after pickup ────────────────────────────────────────────────────
     # Positive omega = left turn, negative = right turn.
-    turn_around_omega_rps: 1.5
-    turn_around_time_s: 4.2
+    # High omega forces one wheel hard forward, other hard backward (spin in place).
+    # For 180 deg: time = pi / omega. At 4.0 rad/s -> ~0.8 s ideal; add slip margin -> 1.5 s.
+    # If it over-rotates, reduce time_s. If under-rotates, increase time_s.
+    turn_around_omega_rps: 4.0
+    turn_around_time_s: 1.5
 
     # ── Drop target (green box) ──────────────────────────────────────────────
     drop_target_class: "green_box"

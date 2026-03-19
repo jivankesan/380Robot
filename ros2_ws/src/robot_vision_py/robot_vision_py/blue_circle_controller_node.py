@@ -29,7 +29,7 @@ class VisualApproachControllerNode(Node):
         self.declare_parameter('target_class', 'blue_circle')
         self.declare_parameter('drop_class', 'green_box')
         self.declare_parameter('kp_angular', 1.8)
-        self.declare_parameter('linear_speed_mps', 0.12)
+        self.declare_parameter('linear_speed_mps', 0.05)
         self.declare_parameter('max_angular_rps', 1.2)
         self.declare_parameter('center_tolerance_x', 0.12)
         self.declare_parameter('detection_timeout_s', 0.5)
