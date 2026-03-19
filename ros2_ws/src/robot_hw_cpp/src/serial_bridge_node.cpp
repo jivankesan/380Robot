@@ -45,6 +45,11 @@ public:
     this->declare_parameter("left_motor_reversed", false);
     this->declare_parameter("right_motor_reversed", false);
     this->declare_parameter("min_pwm", 60);
+    // Servo angles — tune these to match physical hardware
+    this->declare_parameter("servo2_open_angle", 150);    // gripper open
+    this->declare_parameter("servo2_closed_angle", 50);   // gripper closed (tune this)
+    this->declare_parameter("servo1_home_angle", 135);    // rotation home
+    this->declare_parameter("servo1_carry_angle", 90);    // rotation carry
 
     // Get parameters
     serial_port_ = this->get_parameter("serial_port").as_string();
@@ -60,6 +65,10 @@ public:
     left_reversed_ = this->get_parameter("left_motor_reversed").as_bool();
     right_reversed_ = this->get_parameter("right_motor_reversed").as_bool();
     min_pwm_ = this->get_parameter("min_pwm").as_int();
+    servo2_open_angle_   = this->get_parameter("servo2_open_angle").as_int();
+    servo2_closed_angle_ = this->get_parameter("servo2_closed_angle").as_int();
+    servo1_home_angle_   = this->get_parameter("servo1_home_angle").as_int();
+    servo1_carry_angle_  = this->get_parameter("servo1_carry_angle").as_int();
 
     // Initialize state
     target_v_ = 0.0;
@@ -252,17 +261,25 @@ private:
     }
   }
 
-  void send_claw_command(uint8_t mode, float position) {
+  void send_claw_command(uint8_t servo_id, float position) {
+    // servo_id: 1 = rotation servo, 2 = gripper servo
+    // position: 0.0 = open/home, 1.0 = closed/carry
     if (serial_fd_ < 0) {
       RCLCPP_WARN_THROTTLE(
           this->get_logger(), *this->get_clock(), 2000,
-          "Claw command ignored — serial port not open (mode=%d pos=%.2f)", mode, position);
+          "Claw command ignored — serial port not open (servo=%d pos=%.2f)", servo_id, position);
       return;
     }
 
-    int pos_scaled = static_cast<int>(position * 1000);
+    int angle = 0;
+    if (servo_id == 1) {
+      angle = (position < 0.5f) ? servo1_home_angle_ : servo1_carry_angle_;
+    } else {
+      angle = (position < 0.5f) ? servo2_open_angle_ : servo2_closed_angle_;
+    }
+
     std::stringstream ss;
-    ss << "C," << static_cast<int>(mode) << "," << pos_scaled << "\n";
+    ss << "C," << static_cast<int>(servo_id) << "," << angle << "\n";
     std::string cmd = ss.str();
 
     RCLCPP_INFO_THROTTLE(
@@ -360,6 +377,8 @@ private:
   double left_gain_, right_gain_;
   bool left_reversed_, right_reversed_;
   int min_pwm_;
+  int servo1_home_angle_, servo1_carry_angle_;
+  int servo2_open_angle_, servo2_closed_angle_;
 
   // Serial state
   int serial_fd_;

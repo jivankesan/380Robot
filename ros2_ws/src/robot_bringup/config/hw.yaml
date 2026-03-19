@@ -34,3 +34,11 @@ serial_bridge_node:
     # Minimum PWM to guarantee both wheels overcome static friction / deadband.
     # Raise if the inner wheel stalls during turns. Typical range: 50-80.
     min_pwm: 20
+
+    # Servo angles — tune to match physical hardware
+    # Servo 1 (pin 10): rotation servo
+    servo1_home_angle: 90     # rotation level (startup position)
+    servo1_carry_angle: 135   # rotation carry (after pickup)
+    # Servo 2 (pin 11): gripper servo
+    servo2_open_angle: 70     # gripper open (startup position)
+    servo2_closed_angle: 50   # gripper closed — TUNE THIS for your hardware

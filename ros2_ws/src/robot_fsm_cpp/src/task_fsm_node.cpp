@@ -238,7 +238,7 @@ private:
     // Keep sending claw open every tick so the Arduino receives it even if
     // it was still booting when the first command arrived.
     robot_interfaces::msg::ClawCommand claw_cmd;
-    claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_OPEN;
+    claw_cmd.mode = 1;  // servo 1 = gripper
     claw_cmd.position = 0.0;
     claw_pub_->publish(claw_cmd);
 
@@ -347,7 +347,7 @@ private:
 
     // Close claw
     robot_interfaces::msg::ClawCommand claw_cmd;
-    claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_CLOSE;
+    claw_cmd.mode = 1;  // servo 1 = gripper
     claw_cmd.position = 1.0;
     claw_pub_->publish(claw_cmd);
 
@@ -369,7 +369,7 @@ private:
 
     // Keep claw closed
     robot_interfaces::msg::ClawCommand claw_cmd;
-    claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_HOLD;
+    claw_cmd.mode = 1;  // servo 1 = gripper
     claw_cmd.position = 1.0;
     claw_pub_->publish(claw_cmd);
 
@@ -391,7 +391,7 @@ private:
 
     // Open claw
     robot_interfaces::msg::ClawCommand claw_cmd;
-    claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_OPEN;
+    claw_cmd.mode = 1;  // servo 1 = gripper
     claw_cmd.position = 0.0;
     claw_pub_->publish(claw_cmd);
 
@@ -417,7 +417,7 @@ private:
 
     // Open claw for safety
     robot_interfaces::msg::ClawCommand claw_cmd;
-    claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_OPEN;
+    claw_cmd.mode = 1;  // servo 1 = gripper
     claw_cmd.position = 0.0;
     claw_pub_->publish(claw_cmd);
   }
