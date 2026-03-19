@@ -204,19 +204,16 @@ private:
     state_msg.data = state_to_string(current_state_);
     state_pub_->publish(state_msg);
 
-    // Line-loss failsafe — excluded in states where line is intentionally lost
-    if (current_state_ != State::INIT &&
-        current_state_ != State::PICKUP &&
-        current_state_ != State::TURN_AROUND &&
-        current_state_ != State::DROP &&
-        current_state_ != State::DONE &&
-        current_state_ != State::FAILSAFE_STOP &&
-        current_state_ != State::APPROACH_TARGET) {
+    // Line-loss warning — log only, do not failsafe.
+    // The line follow controller already stops the robot when the line is lost.
+    // Entering FAILSAFE_STOP would open the claw and drop the payload.
+    if (current_state_ == State::FOLLOW_LINE_SEARCH ||
+        current_state_ == State::RETURN_FOLLOW_LINE) {
       double line_loss_time = (this->now() - last_line_valid_time_).seconds();
       if (line_loss_time > line_loss_timeout_) {
-        RCLCPP_WARN(this->get_logger(), "Line lost for too long, entering failsafe");
-        transition_to(State::FAILSAFE_STOP);
-        return;
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+            "Line lost for %.1f s — robot stopped, waiting to reacquire",
+            line_loss_time);
       }
     }
 
