@@ -17,11 +17,14 @@ task_fsm_node:
     # Circle needs to fill ~40% of frame width before pickup.
     target_size_close_threshold: 0.40
 
-    # Pickup timing (seconds)
-    # stop_dwell: wait this long for motors to coast to zero before closing claw
-    pickup_stop_dwell_s: 0.4
-    pickup_close_time_s: 1.0
-    pickup_hold_time_s: 0.5
+    # Pickup sequence timing (seconds)
+    pickup_stop_dwell_s: 0.4    # wait for motors to stop
+    pickup_close_time_s: 1.0    # time to close gripper (servo 2)
+    pickup_rotate_time_s: 0.5   # time to rotate to carry position (servo 1)
+
+    # Turn-around after pickup — spin in place to face back down the line
+    turn_around_omega_rps: 1.5  # rotation speed (rad/s), positive = left turn
+    turn_around_time_s: 2.5     # tune until robot completes ~180°
 
     # Drop timing (seconds)
     drop_open_time_s: 1.0
