@@ -221,6 +221,12 @@ private:
     int pwm_left = static_cast<int>(norm_left * max_pwm_);
     int pwm_right = static_cast<int>(norm_right * max_pwm_);
 
+    // During forward motion, never let either wheel reverse due to v/omega mismatch
+    if (target_v_ > 0.0) {
+      pwm_left  = std::max(0, pwm_left);
+      pwm_right = std::max(0, pwm_right);
+    }
+
     // Enforce minimum PWM so neither wheel stalls in the motor deadband
     if (pwm_left > 0 && pwm_left < min_pwm_) pwm_left = min_pwm_;
     if (pwm_left < 0 && pwm_left > -min_pwm_) pwm_left = -min_pwm_;

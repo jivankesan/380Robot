@@ -47,7 +47,7 @@ speed_profile_node:
     heading_slowdown_gain: 0.5
 
     # Control rate
-    rate_hz: 58.0
+    rate_hz: 100.0
 
 safety_stop_node:
   ros__parameters:
