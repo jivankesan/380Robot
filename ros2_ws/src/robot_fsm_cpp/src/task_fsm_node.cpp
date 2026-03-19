@@ -246,6 +246,7 @@ private:
     drop_detection_count_ = 0;
     pickup_phase_         = -1;
     drop_phase_           = -1;
+    approach_max_cy_      = 0.0;
     if (new_state == State::FAILSAFE_STOP) {
       claw_gripper(0.0);  // open gripper once on entry, not every tick
     }
@@ -345,19 +346,26 @@ private:
     }
     detection_count_ = 0;
 
+    // Track the highest cy seen — when it was high we were at the right distance.
+    approach_max_cy_ = std::max(approach_max_cy_, static_cast<double>(target->cy));
+
     bool centered_x   = std::abs(target->cx - 0.5) < center_tol_x_;
     bool close_enough = target->cy >= approach_stop_cy_;
+    // Overshoot detection: we were once at the right distance (max_cy >= threshold)
+    // but cy dropped back below 0.15 — the robot drove past the target.
+    bool overshot = (approach_max_cy_ >= approach_stop_cy_) && (target->cy < 0.15);
 
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 250,
-        "APPROACH cx=%.2f cy=%.2f  centered=%s close=%s (need cy>=%.2f)",
-        target->cx, target->cy,
+        "APPROACH cx=%.2f cy=%.2f max_cy=%.2f centered=%s close=%s overshot=%s",
+        target->cx, target->cy, approach_max_cy_,
         centered_x ? "YES" : "no",
         close_enough ? "YES" : "no",
-        approach_stop_cy_);
+        overshot ? "YES" : "no");
 
-    if (centered_x && close_enough) {
+    if (centered_x && (close_enough || overshot)) {
       RCLCPP_INFO(this->get_logger(),
-          "Blue circle at pickup position (cy=%.2f) — starting pickup", target->cy);
+          "Pickup triggered (cy=%.2f max_cy=%.2f overshoot=%s)",
+          target->cy, approach_max_cy_, overshot ? "YES" : "no");
       transition_to(State::PICKUP);
     }
   }
@@ -612,6 +620,7 @@ private:
   int                drop_detection_count_;
   int                pickup_phase_;   // -1 = not started; tracks phase within PICKUP/TURN_AROUND
   int                drop_phase_;     // -1 = not started; tracks phase within DROP
+  double             approach_max_cy_; // highest cy seen during APPROACH_TARGET (overshoot detection)
   robot_interfaces::msg::Detections2D latest_detections_;
   bool               line_valid_;
   rclcpp::Time       last_line_valid_time_;
