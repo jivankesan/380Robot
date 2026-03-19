@@ -35,7 +35,7 @@ class ObjectDetectorNode(Node):
         self.declare_parameter('heuristic_s_max', 255)
         self.declare_parameter('heuristic_v_min', 50)
         self.declare_parameter('heuristic_v_max', 255)
-        self.declare_parameter('heuristic_min_area', 2000)
+        self.declare_parameter('heuristic_min_area', 800)
         self.declare_parameter('heuristic_max_area', 200000)
         self.declare_parameter('heuristic_circularity_min', 0.4)
         # Green box HSV parameters

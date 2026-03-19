@@ -55,7 +55,7 @@ object_detector_node:
     heuristic_s_max: 255
     heuristic_v_min: 50
     heuristic_v_max: 255
-    heuristic_min_area: 2000
+    heuristic_min_area: 800
     heuristic_max_area: 200000
     # Circularity: 1.0 = perfect circle, reject blobs below this
     heuristic_circularity_min: 0.4
@@ -86,7 +86,7 @@ blue_circle_controller_node:
     # Proportional gain for horizontal centering (angular_z = -kp * (cx - 0.5))
     kp_angular: 1.0
     # Slow forward speed while approaching (both pickup and drop approach)
-    linear_speed_mps: 0.05
+    linear_speed_mps: 0.08
     max_angular_rps: 0.7
     center_tolerance_x: 0.20
     # Stop publishing if no detection for this many seconds

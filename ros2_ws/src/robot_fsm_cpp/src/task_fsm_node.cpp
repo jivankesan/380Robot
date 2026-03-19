@@ -72,10 +72,11 @@ public:
     this->declare_parameter("detection_confidence_threshold", 0.5);
     this->declare_parameter("detection_stability_frames", 5);
     this->declare_parameter("target_center_tolerance_x", 0.12);
-    // Stop when blue circle centroid y-position exceeds this (0=top, 1=bottom).
-    // When the circle appears in the lower frame the claw is close enough.
-    // Tune: increase = stop earlier; decrease = get closer before stopping.
-    this->declare_parameter("approach_stop_cy", 0.62);
+    // Stop when the blue circle bounding-box width fraction exceeds this value.
+    // w=1.0 means the circle fills the whole frame width; 0.5 = half the frame.
+    // Width is a more stable distance proxy than cy (doesn't depend on approach angle).
+    // Tune: increase = stop farther away; decrease = get closer before stopping.
+    this->declare_parameter("approach_stop_w", 0.50);
 
     // ── Pickup sequence ──────────────────────────────────────────────────────
     this->declare_parameter("pickup_stop_dwell_s", 0.4);
@@ -113,7 +114,7 @@ public:
     conf_threshold_        = this->get_parameter("detection_confidence_threshold").as_double();
     stability_frames_      = this->get_parameter("detection_stability_frames").as_int();
     center_tol_x_          = this->get_parameter("target_center_tolerance_x").as_double();
-    approach_stop_cy_      = this->get_parameter("approach_stop_cy").as_double();
+    approach_stop_w_       = this->get_parameter("approach_stop_w").as_double();
 
     pickup_stop_dwell_     = this->get_parameter("pickup_stop_dwell_s").as_double();
     pickup_close_time_     = this->get_parameter("pickup_close_time_s").as_double();
@@ -246,7 +247,7 @@ private:
     drop_detection_count_ = 0;
     pickup_phase_         = -1;
     drop_phase_           = -1;
-    approach_max_cy_      = 0.0;
+    approach_max_w_       = 0.0;
     if (new_state == State::FAILSAFE_STOP) {
       claw_gripper(0.0);  // open gripper once on entry, not every tick
     }
@@ -327,9 +328,9 @@ private:
   }
 
   // Visual approach controller steers toward blue circle centroid.
-  // Stop when centroid drops into lower frame (cy >= approach_stop_cy_) AND centered.
-  // This means the claw is positioned over the target.
-  // Tune approach_stop_cy in fsm.yaml: increase = stop farther away, decrease = get closer.
+  // Stop when the circle is wide enough (w >= approach_stop_w_) AND centered.
+  // Width is used instead of cy because it's stable even when only a partial arc is visible.
+  // Tune approach_stop_w in fsm.yaml: increase = stop farther away, decrease = get closer.
   void handle_approach_target() {
     set_drive_enable(false);  // visual approach controller owns cmd_vel
 
@@ -338,6 +339,14 @@ private:
 
     if (!target.has_value()) {
       detection_count_++;
+      // If we previously had a large w (were close) and now lost the target,
+      // the robot overshot — trigger pickup rather than returning to search.
+      if (approach_max_w_ >= approach_stop_w_) {
+        RCLCPP_INFO(this->get_logger(),
+            "Pickup triggered (overshot: detection lost after max_w=%.2f)", approach_max_w_);
+        transition_to(State::PICKUP);
+        return;
+      }
       if (dwell_time > min_approach_dwell_ && detection_count_ > stability_frames_ * 2) {
         RCLCPP_WARN(this->get_logger(), "Lost blue circle — returning to search");
         transition_to(State::FOLLOW_LINE_SEARCH);
@@ -346,26 +355,21 @@ private:
     }
     detection_count_ = 0;
 
-    // Track the highest cy seen — when it was high we were at the right distance.
-    approach_max_cy_ = std::max(approach_max_cy_, static_cast<double>(target->cy));
+    // Track the widest (closest) detection seen.
+    approach_max_w_ = std::max(approach_max_w_, static_cast<double>(target->w));
 
     bool centered_x   = std::abs(target->cx - 0.5) < center_tol_x_;
-    bool close_enough = target->cy >= approach_stop_cy_;
-    // Overshoot detection: we were once at the right distance (max_cy >= threshold)
-    // but cy dropped back below 0.15 — the robot drove past the target.
-    bool overshot = (approach_max_cy_ >= approach_stop_cy_) && (target->cy < 0.15);
+    bool close_enough = target->w >= approach_stop_w_;
 
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 250,
-        "APPROACH cx=%.2f cy=%.2f max_cy=%.2f centered=%s close=%s overshot=%s",
-        target->cx, target->cy, approach_max_cy_,
+        "APPROACH cx=%.2f cy=%.2f w=%.2f max_w=%.2f centered=%s close=%s",
+        target->cx, target->cy, target->w, approach_max_w_,
         centered_x ? "YES" : "no",
-        close_enough ? "YES" : "no",
-        overshot ? "YES" : "no");
+        close_enough ? "YES" : "no");
 
-    if (centered_x && (close_enough || overshot)) {
+    if (centered_x && close_enough) {
       RCLCPP_INFO(this->get_logger(),
-          "Pickup triggered (cy=%.2f max_cy=%.2f overshoot=%s)",
-          target->cy, approach_max_cy_, overshot ? "YES" : "no");
+          "Pickup triggered (w=%.2f max_w=%.2f)", target->w, approach_max_w_);
       transition_to(State::PICKUP);
     }
   }
@@ -585,7 +589,7 @@ private:
   double conf_threshold_;
   int    stability_frames_;
   double center_tol_x_;
-  double approach_stop_cy_;
+  double approach_stop_w_;
 
   double pickup_stop_dwell_;
   double pickup_close_time_;
@@ -620,7 +624,7 @@ private:
   int                drop_detection_count_;
   int                pickup_phase_;   // -1 = not started; tracks phase within PICKUP/TURN_AROUND
   int                drop_phase_;     // -1 = not started; tracks phase within DROP
-  double             approach_max_cy_; // highest cy seen during APPROACH_TARGET (overshoot detection)
+  double             approach_max_w_;  // widest det.w seen during APPROACH_TARGET (overshoot detection)
   robot_interfaces::msg::Detections2D latest_detections_;
   bool               line_valid_;
   rclcpp::Time       last_line_valid_time_;
