@@ -16,17 +16,17 @@
 #include <Servo.h>
 
 // Pin definitions for Elegoo Smart Car Shield (TB6612 driver)
-const int LEFT_MOTOR_EN = 6;    // PWMB
-const int LEFT_MOTOR_IN1 = 7;   // BIN1
-const int LEFT_MOTOR_IN2 = 8;   // BIN2
-const int RIGHT_MOTOR_EN = 5;   // PWMA
-const int RIGHT_MOTOR_IN1 = 12; // AIN1
-const int RIGHT_MOTOR_IN2 = 13; // AIN2
+const int RIGHT_MOTOR_EN = 6;   // PWMB
+const int RIGHT_MOTOR_IN1 = 7;  // BIN1
+const int RIGHT_MOTOR_IN2 = 8;  // BIN2
+const int LEFT_MOTOR_EN = 5;    // PWMA
+const int LEFT_MOTOR_IN1 = 12;  // AIN1
+const int LEFT_MOTOR_IN2 = 13;  // AIN2
 const int MOTOR_STBY = 3;       // Standby - must be HIGH to enable motors
 
 // Claw servo pins
 const int CLAW_ROTATION_SERVO_PIN = 10;  // Servo 1: rotation axis
-const int CLAW_GRIPPER_SERVO_PIN  = 9;   // Servo 2: open/close gripper
+const int CLAW_GRIPPER_SERVO_PIN = 9;    // Servo 2: open/close gripper
 
 // Battery voltage divider pin (analog)
 const int BATTERY_PIN = A0;
@@ -35,12 +35,12 @@ const int BATTERY_PIN = A0;
 const int ESTOP_PIN = -1;
 
 // Servo 2 (gripper) angles
-const int CLAW_OPEN_POS   = 70;
+const int CLAW_OPEN_POS = 70;
 const int CLAW_CLOSED_POS = 130;
 
 // Servo 1 (rotation) angles
 const int CLAW_HORIZONTAL_POS = 20;
-const int CLAW_ROTATED_POS    = 90;
+const int CLAW_ROTATED_POS = 90;
 
 // Watchdog timeout (ms)
 const unsigned long WATCHDOG_TIMEOUT = 250;
@@ -135,10 +135,12 @@ void loop() {
 }
 
 void processCommand(String cmd) {
-  if (cmd.length() < 3) return;
+  if (cmd.length() < 3)
+    return;
 
   char cmdType = cmd.charAt(0);
-  if (cmd.charAt(1) != ',') return;
+  if (cmd.charAt(1) != ',')
+    return;
 
   String params = cmd.substring(2);
 
@@ -193,20 +195,20 @@ void processClawCommand(String params) {
   int gripperAngle;
   int rotationAngle;
   switch (mode) {
-    case 0: // Open — gripper open, rotation horizontal
-      gripperAngle  = CLAW_OPEN_POS;
+    case 0:  // Open — gripper open, rotation horizontal
+      gripperAngle = CLAW_OPEN_POS;
       rotationAngle = CLAW_HORIZONTAL_POS;
       break;
-    case 1: // Close — gripper closed, rotation rotated (carry position)
-      gripperAngle  = CLAW_CLOSED_POS;
+    case 1:  // Close — gripper closed, rotation rotated (carry position)
+      gripperAngle = CLAW_CLOSED_POS;
       rotationAngle = CLAW_ROTATED_POS;
       break;
-    case 2: // Hold — interpolate gripper, keep rotation at carry position
-      gripperAngle  = map(currentClawPos, 0, 1000, CLAW_OPEN_POS, CLAW_CLOSED_POS);
+    case 2:  // Hold — interpolate gripper, keep rotation at carry position
+      gripperAngle = map(currentClawPos, 0, 1000, CLAW_OPEN_POS, CLAW_CLOSED_POS);
       rotationAngle = CLAW_ROTATED_POS;
       break;
     default:
-      gripperAngle  = CLAW_OPEN_POS;
+      gripperAngle = CLAW_OPEN_POS;
       rotationAngle = CLAW_HORIZONTAL_POS;
   }
 
@@ -258,7 +260,7 @@ void sendTelemetry() {
   // Assuming voltage divider: Vbat -> 10k -> A0 -> 10k -> GND
   // So A0 reads Vbat/2
   int rawADC = analogRead(BATTERY_PIN);
-  int batteryMV = map(rawADC, 0, 1023, 0, 5000) * 2; // x2 for voltage divider
+  int batteryMV = map(rawADC, 0, 1023, 0, 5000) * 2;  // x2 for voltage divider
 
   // Format: T,<battery_mv>,<left_enc>,<right_enc>,<estop>
   Serial.print("T,");
@@ -266,4 +268,3 @@ void sendTelemetry() {
   Serial.print(",0,0,");
   Serial.println(estopActive ? "1" : "0");
 }
-
