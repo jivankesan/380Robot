@@ -1,54 +1,58 @@
 # Task FSM configuration
 task_fsm_node:
   ros__parameters:
-    # Target object settings
+    # ── Pickup target (blue circle) ──────────────────────────────────────────
     target_class: "blue_circle"
     detection_confidence_threshold: 0.45
-
-    # Detection stability (frames before transition)
-    # Fewer frames needed — circle is large and easy to lock onto
     detection_stability_frames: 8
+    target_center_tolerance_x: 0.12
 
-    # Target centering tolerance (normalized, 0-1 from center)
-    target_center_tolerance_x: 0.15
-    target_center_tolerance_y: 0.25
+    # When to stop the approach and begin pickup.
+    # cy is normalized 0 (top) to 1 (bottom of frame).
+    # Increase this value to stop farther away; decrease to get closer.
+    # Start with 0.62 and adjust 0.05 at a time based on where the robot stops.
+    approach_stop_cy: 0.62
 
-    # Target size threshold for "close enough" (normalized width).
-    # Circle needs to fill ~65% of frame width before pickup.
-    target_size_close_threshold: 0.65
-
-    # Pickup sequence timing (seconds)
-    pickup_stop_dwell_s: 0.4    # actively publish M,0,0 for this long
+    # ── Pickup sequence timing (seconds) ────────────────────────────────────
+    pickup_stop_dwell_s: 0.4    # publish zero velocity for this long
     pickup_close_time_s: 1.0    # time to close gripper (servo 2)
-    pickup_rotate_time_s: 0.5   # time to rotate claw to carry position (servo 1)
+    pickup_rotate_time_s: 0.5   # time to rotate claw to carry (servo 1)
 
-    # Spin after pickup until red line is detected again.
-    # Positive = left turn, negative = right turn.
-    # A 0.5 s blind window is enforced before checking for line.
+    # ── Spin after pickup ────────────────────────────────────────────────────
+    # Positive omega = left turn, negative = right turn.
     turn_around_omega_rps: 1.5
-    turn_around_time_s: 4.2     # fallback only — not used for exit condition
+    turn_around_time_s: 4.2
 
-    # Drop timing (seconds)
-    drop_open_time_s: 1.0
+    # ── Drop target (green box) ──────────────────────────────────────────────
+    drop_target_class: "green_box"
+    drop_center_tolerance_x: 0.15
+    # Green box must fill this fraction of frame before triggering drop.
+    drop_size_threshold: 0.30
+    drop_detection_stability_frames: 5
 
-    # Return detection (for drop zone)
-    drop_zone_marker_class: "drop_zone"
+    # ── Drop sequence timing (seconds) ──────────────────────────────────────
+    drop_rotate_time_s: 0.5   # rotate claw to horizontal before opening
+    drop_open_time_s: 1.0     # time to open gripper
+
+    # ── Reverse onto red line after drop ────────────────────────────────────
+    reverse_time_s: 2.0
+    reverse_speed_mps: 0.15
+
+    # ── Follow line home after reversal ─────────────────────────────────────
+    return_home_time_s: 8.0
+
+    # ── Fallback: drop after this many seconds if green box not found ────────
     use_time_based_return: true
-    return_time_s: 10.0
+    return_time_s: 12.0
 
-    # Minimum time to stay in APPROACH_TARGET before falling back to search
+    # ── Approach dwell before falling back to search ─────────────────────────
     min_approach_dwell_s: 2.0
 
-    # Minimum time to stay in INIT before mission can start.
-    # Arduino resets when the serial port opens (DTR), takes ~1 s to boot.
-    # This ensures the claw-open command is sent and received before moving on.
+    # ── Init dwell (Arduino boot time) ──────────────────────────────────────
     min_init_dwell_s: 1.5
 
-    # Line loss handling
+    # ── Line loss warning threshold ──────────────────────────────────────────
     line_loss_timeout_s: 0.5
 
-    # State machine rate
+    # ── State machine rate ───────────────────────────────────────────────────
     rate_hz: 20.0
-
-    # Initial state
-    initial_state: "INIT"

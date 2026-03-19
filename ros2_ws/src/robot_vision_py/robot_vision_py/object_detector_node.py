@@ -38,6 +38,15 @@ class ObjectDetectorNode(Node):
         self.declare_parameter('heuristic_min_area', 2000)
         self.declare_parameter('heuristic_max_area', 200000)
         self.declare_parameter('heuristic_circularity_min', 0.4)
+        # Green box HSV parameters
+        self.declare_parameter('green_h_min', 40)
+        self.declare_parameter('green_h_max', 80)
+        self.declare_parameter('green_s_min', 60)
+        self.declare_parameter('green_s_max', 255)
+        self.declare_parameter('green_v_min', 40)
+        self.declare_parameter('green_v_max', 210)
+        self.declare_parameter('green_min_area', 3000)
+        self.declare_parameter('green_max_area', 200000)
         self.declare_parameter('model_path', '')
         self.declare_parameter('device', 'cpu')
         self.declare_parameter('detection_rate_hz', 10.0)
@@ -55,6 +64,14 @@ class ObjectDetectorNode(Node):
         self.min_area = self.get_parameter('heuristic_min_area').value
         self.max_area = self.get_parameter('heuristic_max_area').value
         self.circularity_min = self.get_parameter('heuristic_circularity_min').value
+        self.green_h_min  = self.get_parameter('green_h_min').value
+        self.green_h_max  = self.get_parameter('green_h_max').value
+        self.green_s_min  = self.get_parameter('green_s_min').value
+        self.green_s_max  = self.get_parameter('green_s_max').value
+        self.green_v_min  = self.get_parameter('green_v_min').value
+        self.green_v_max  = self.get_parameter('green_v_max').value
+        self.green_min_area = self.get_parameter('green_min_area').value
+        self.green_max_area = self.get_parameter('green_max_area').value
         self.model_path = self.get_parameter('model_path').value
         self.device = self.get_parameter('device').value
         detection_rate = self.get_parameter('detection_rate_hz').value
@@ -186,6 +203,39 @@ class ObjectDetectorNode(Node):
 
         if best_det is not None:
             detections.append(best_det)
+
+        # ── Green box detection ────────────────────────────────────────────
+        lower_g = np.array([self.green_h_min, self.green_s_min, self.green_v_min])
+        upper_g = np.array([self.green_h_max, self.green_s_max, self.green_v_max])
+        mask_g  = cv2.inRange(hsv, lower_g, upper_g)
+
+        kernel_g = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
+        mask_g   = cv2.morphologyEx(mask_g, cv2.MORPH_CLOSE, kernel_g)
+        mask_g   = cv2.morphologyEx(mask_g, cv2.MORPH_OPEN, kernel_g)
+
+        contours_g, _ = cv2.findContours(
+            mask_g, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        best_green = None
+        best_green_area = 0
+        for contour in contours_g:
+            area = cv2.contourArea(contour)
+            if area < self.green_min_area or area > self.green_max_area:
+                continue
+            x, y, w, h = cv2.boundingRect(contour)
+            det = Detection2D()
+            det.class_name = 'green_box'
+            det.score      = float(min(1.0, area / 20000.0))
+            det.cx         = float((x + w / 2) / width)
+            det.cy         = float((y + h / 2) / height)
+            det.w          = float(w / width)
+            det.h          = float(h / height)
+            if det.score >= self.conf_threshold and area > best_green_area:
+                best_green_area = area
+                best_green = det
+
+        if best_green is not None:
+            detections.append(best_green)
 
         return detections
 

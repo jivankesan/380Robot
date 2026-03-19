@@ -3,15 +3,18 @@
  * @brief Task-level finite state machine for pick-and-place mission.
  *
  * States:
- * - INIT:              Wait for sensors, hold claw open
- * - FOLLOW_LINE_SEARCH: Follow line, watch for blue circle
- * - APPROACH_TARGET:   Blue circle controller drives toward circle
- * - PICKUP:            Stop → close gripper (servo2) → rotate carry (servo1)
- * - TURN_AROUND:       Spin ~180° in place so robot faces back down the line
- * - RETURN_FOLLOW_LINE: Follow line back to drop zone
- * - DROP:              Open claw to release object
- * - DONE:              Mission complete, stopped
- * - FAILSAFE_STOP:     Error state, open claw
+ * - INIT:               Wait for sensors, hold claw open
+ * - FOLLOW_LINE_SEARCH: Follow red line, watch for blue circle
+ * - APPROACH_TARGET:    Visual approach to blue circle; stop when cy threshold + centered
+ * - PICKUP:             Stop → close gripper (servo2) → rotate claw to carry (servo1)
+ * - TURN_AROUND:        Spin ~180° in place so robot faces back down the line
+ * - RETURN_FOLLOW_LINE: Follow line back, watch for green drop-zone box
+ * - APPROACH_DROP:      Visual approach to green box centroid
+ * - DROP:               Rotate claw horizontal → open gripper to release
+ * - REVERSE_TO_LINE:    Reverse back onto red line
+ * - RETURN_HOME:        Follow red line back to start
+ * - DONE:               Mission complete, stopped
+ * - FAILSAFE_STOP:      Error state, open claw
  */
 
 #include <chrono>
@@ -35,7 +38,10 @@ enum class State {
   PICKUP,
   TURN_AROUND,
   RETURN_FOLLOW_LINE,
+  APPROACH_DROP,
   DROP,
+  REVERSE_TO_LINE,
+  RETURN_HOME,
   DONE,
   FAILSAFE_STOP
 };
@@ -48,7 +54,10 @@ std::string state_to_string(State state) {
     case State::PICKUP:             return "PICKUP";
     case State::TURN_AROUND:        return "TURN_AROUND";
     case State::RETURN_FOLLOW_LINE: return "RETURN_FOLLOW_LINE";
+    case State::APPROACH_DROP:      return "APPROACH_DROP";
     case State::DROP:               return "DROP";
+    case State::REVERSE_TO_LINE:    return "REVERSE_TO_LINE";
+    case State::RETURN_HOME:        return "RETURN_HOME";
     case State::DONE:               return "DONE";
     case State::FAILSAFE_STOP:      return "FAILSAFE_STOP";
     default:                        return "UNKNOWN";
@@ -58,19 +67,41 @@ std::string state_to_string(State state) {
 class TaskFsmNode : public rclcpp::Node {
 public:
   TaskFsmNode() : Node("task_fsm_node") {
-    // Parameters
+    // ── Pickup target (blue circle) ──────────────────────────────────────────
     this->declare_parameter("target_class", "blue_circle");
     this->declare_parameter("detection_confidence_threshold", 0.5);
     this->declare_parameter("detection_stability_frames", 5);
-    this->declare_parameter("target_center_tolerance_x", 0.15);
-    this->declare_parameter("target_center_tolerance_y", 0.2);
-    this->declare_parameter("target_size_close_threshold", 0.25);
+    this->declare_parameter("target_center_tolerance_x", 0.12);
+    // Stop when blue circle centroid y-position exceeds this (0=top, 1=bottom).
+    // When the circle appears in the lower frame the claw is close enough.
+    // Tune: increase = stop earlier; decrease = get closer before stopping.
+    this->declare_parameter("approach_stop_cy", 0.62);
+
+    // ── Pickup sequence ──────────────────────────────────────────────────────
     this->declare_parameter("pickup_stop_dwell_s", 0.4);
     this->declare_parameter("pickup_close_time_s", 1.0);
     this->declare_parameter("pickup_rotate_time_s", 0.5);
+
+    // ── Turn around ──────────────────────────────────────────────────────────
     this->declare_parameter("turn_around_omega_rps", 1.5);
-    this->declare_parameter("turn_around_time_s", 2.5);
+    this->declare_parameter("turn_around_time_s", 4.2);
+
+    // ── Drop target (green box) ──────────────────────────────────────────────
+    this->declare_parameter("drop_target_class", "green_box");
+    this->declare_parameter("drop_center_tolerance_x", 0.15);
+    this->declare_parameter("drop_size_threshold", 0.30);
+    this->declare_parameter("drop_detection_stability_frames", 5);
+
+    // ── Drop sequence ────────────────────────────────────────────────────────
+    this->declare_parameter("drop_rotate_time_s", 0.5);
     this->declare_parameter("drop_open_time_s", 1.0);
+
+    // ── Reverse and return home ──────────────────────────────────────────────
+    this->declare_parameter("reverse_time_s", 2.0);
+    this->declare_parameter("reverse_speed_mps", 0.15);
+    this->declare_parameter("return_home_time_s", 8.0);
+
+    // ── Misc ─────────────────────────────────────────────────────────────────
     this->declare_parameter("use_time_based_return", true);
     this->declare_parameter("return_time_s", 10.0);
     this->declare_parameter("min_approach_dwell_s", 2.0);
@@ -78,32 +109,46 @@ public:
     this->declare_parameter("min_init_dwell_s", 1.5);
     this->declare_parameter("rate_hz", 20.0);
 
-    target_class_        = this->get_parameter("target_class").as_string();
-    conf_threshold_      = this->get_parameter("detection_confidence_threshold").as_double();
-    stability_frames_    = this->get_parameter("detection_stability_frames").as_int();
-    center_tol_x_        = this->get_parameter("target_center_tolerance_x").as_double();
-    center_tol_y_        = this->get_parameter("target_center_tolerance_y").as_double();
-    size_close_threshold_= this->get_parameter("target_size_close_threshold").as_double();
-    pickup_stop_dwell_   = this->get_parameter("pickup_stop_dwell_s").as_double();
-    pickup_close_time_   = this->get_parameter("pickup_close_time_s").as_double();
-    pickup_rotate_time_  = this->get_parameter("pickup_rotate_time_s").as_double();
-    turn_around_omega_   = this->get_parameter("turn_around_omega_rps").as_double();
-    turn_around_time_    = this->get_parameter("turn_around_time_s").as_double();
-    drop_open_time_      = this->get_parameter("drop_open_time_s").as_double();
-    use_time_return_     = this->get_parameter("use_time_based_return").as_bool();
-    return_time_         = this->get_parameter("return_time_s").as_double();
-    min_approach_dwell_  = this->get_parameter("min_approach_dwell_s").as_double();
-    line_loss_timeout_   = this->get_parameter("line_loss_timeout_s").as_double();
-    min_init_dwell_      = this->get_parameter("min_init_dwell_s").as_double();
-    rate_hz_             = this->get_parameter("rate_hz").as_double();
+    target_class_          = this->get_parameter("target_class").as_string();
+    conf_threshold_        = this->get_parameter("detection_confidence_threshold").as_double();
+    stability_frames_      = this->get_parameter("detection_stability_frames").as_int();
+    center_tol_x_          = this->get_parameter("target_center_tolerance_x").as_double();
+    approach_stop_cy_      = this->get_parameter("approach_stop_cy").as_double();
+
+    pickup_stop_dwell_     = this->get_parameter("pickup_stop_dwell_s").as_double();
+    pickup_close_time_     = this->get_parameter("pickup_close_time_s").as_double();
+    pickup_rotate_time_    = this->get_parameter("pickup_rotate_time_s").as_double();
+
+    turn_around_omega_     = this->get_parameter("turn_around_omega_rps").as_double();
+    turn_around_time_      = this->get_parameter("turn_around_time_s").as_double();
+
+    drop_class_            = this->get_parameter("drop_target_class").as_string();
+    drop_center_tol_x_     = this->get_parameter("drop_center_tolerance_x").as_double();
+    drop_size_threshold_   = this->get_parameter("drop_size_threshold").as_double();
+    drop_stability_frames_ = this->get_parameter("drop_detection_stability_frames").as_int();
+
+    drop_rotate_time_      = this->get_parameter("drop_rotate_time_s").as_double();
+    drop_open_time_        = this->get_parameter("drop_open_time_s").as_double();
+
+    reverse_time_          = this->get_parameter("reverse_time_s").as_double();
+    reverse_speed_         = this->get_parameter("reverse_speed_mps").as_double();
+    return_home_time_      = this->get_parameter("return_home_time_s").as_double();
+
+    use_time_return_       = this->get_parameter("use_time_based_return").as_bool();
+    return_time_           = this->get_parameter("return_time_s").as_double();
+    min_approach_dwell_    = this->get_parameter("min_approach_dwell_s").as_double();
+    line_loss_timeout_     = this->get_parameter("line_loss_timeout_s").as_double();
+    min_init_dwell_        = this->get_parameter("min_init_dwell_s").as_double();
+    rate_hz_               = this->get_parameter("rate_hz").as_double();
 
     // State
-    current_state_       = State::INIT;
-    detection_count_     = 0;
-    state_start_time_    = this->now();
-    line_valid_          = false;
-    last_line_valid_time_= this->now();
-    hw_ready_            = false;
+    current_state_         = State::INIT;
+    detection_count_       = 0;
+    drop_detection_count_  = 0;
+    state_start_time_      = this->now();
+    line_valid_            = false;
+    last_line_valid_time_  = this->now();
+    hw_ready_              = false;
 
     // Subscribers
     line_sub_ = this->create_subscription<robot_interfaces::msg::LineObservation>(
@@ -140,7 +185,7 @@ private:
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   void claw_gripper(float position) {
-    // servo 2 = gripper: position 0.0 = open, 1.0 = closed
+    // servo 2: 0.0 = open, 1.0 = closed
     robot_interfaces::msg::ClawCommand cmd;
     cmd.mode     = 2;
     cmd.position = position;
@@ -148,7 +193,7 @@ private:
   }
 
   void claw_rotation(float position) {
-    // servo 1 = rotation: position 0.0 = level, 1.0 = carry
+    // servo 1: 0.0 = horizontal/level, 1.0 = carry position
     robot_interfaces::msg::ClawCommand cmd;
     cmd.mode     = 1;
     cmd.position = position;
@@ -161,9 +206,10 @@ private:
     enable_pub_->publish(msg);
   }
 
-  void publish_turn(double omega) {
+  void publish_twist(double linear_x, double angular_z) {
     geometry_msgs::msg::Twist twist;
-    twist.angular.z = omega;
+    twist.linear.x  = linear_x;
+    twist.angular.z = angular_z;
     cmd_pub_->publish(twist);
   }
 
@@ -189,15 +235,13 @@ private:
 
   void transition_to(State new_state) {
     if (new_state == current_state_) return;
-    RCLCPP_INFO(this->get_logger(), "State transition: %s -> %s",
+    RCLCPP_INFO(this->get_logger(), "State: %s -> %s",
         state_to_string(current_state_).c_str(),
         state_to_string(new_state).c_str());
-    current_state_    = new_state;
-    state_start_time_ = this->now();
-    detection_count_  = 0;
-    if (new_state == State::FAILSAFE_STOP) {
-      claw_gripper(0.0);  // open gripper once on entry, not every tick
-    }
+    current_state_        = new_state;
+    state_start_time_     = this->now();
+    detection_count_      = 0;
+    drop_detection_count_ = 0;
   }
 
   // ── Main loop ─────────────────────────────────────────────────────────────
@@ -207,16 +251,13 @@ private:
     state_msg.data = state_to_string(current_state_);
     state_pub_->publish(state_msg);
 
-    // Line-loss warning — log only, do not failsafe.
-    // The line follow controller already stops the robot when the line is lost.
-    // Entering FAILSAFE_STOP would open the claw and drop the payload.
     if (current_state_ == State::FOLLOW_LINE_SEARCH ||
-        current_state_ == State::RETURN_FOLLOW_LINE) {
+        current_state_ == State::RETURN_FOLLOW_LINE ||
+        current_state_ == State::RETURN_HOME) {
       double line_loss_time = (this->now() - last_line_valid_time_).seconds();
       if (line_loss_time > line_loss_timeout_) {
         RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
-            "Line lost for %.1f s — robot stopped, waiting to reacquire",
-            line_loss_time);
+            "Line lost for %.1f s — waiting to reacquire", line_loss_time);
       }
     }
 
@@ -227,7 +268,10 @@ private:
       case State::PICKUP:             handle_pickup();             break;
       case State::TURN_AROUND:        handle_turn_around();        break;
       case State::RETURN_FOLLOW_LINE: handle_return_follow_line(); break;
+      case State::APPROACH_DROP:      handle_approach_drop();      break;
       case State::DROP:               handle_drop();               break;
+      case State::REVERSE_TO_LINE:    handle_reverse_to_line();    break;
+      case State::RETURN_HOME:        handle_return_home();        break;
       case State::DONE:               handle_done();               break;
       case State::FAILSAFE_STOP:      handle_failsafe();           break;
     }
@@ -237,17 +281,17 @@ private:
 
   void handle_init() {
     set_drive_enable(false);
-    claw_gripper(0.0);    // servo 2 open
-    claw_rotation(0.0);   // servo 1 level
+    claw_gripper(0.0);
+    claw_rotation(0.0);
 
     double wait_time = (this->now() - state_start_time_).seconds();
     if (wait_time < min_init_dwell_) {
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-          "INIT: claw open, waiting %.1f / %.1f s", wait_time, min_init_dwell_);
+          "INIT: waiting %.1f / %.1f s", wait_time, min_init_dwell_);
       return;
     }
     if (line_valid_ && hw_ready_) {
-      RCLCPP_INFO(this->get_logger(), "Systems ready, starting mission");
+      RCLCPP_INFO(this->get_logger(), "Systems ready — starting mission");
       transition_to(State::FOLLOW_LINE_SEARCH);
     } else if (wait_time > 10.0) {
       RCLCPP_WARN(this->get_logger(), "Timeout waiting for systems, starting anyway");
@@ -257,14 +301,14 @@ private:
 
   void handle_follow_line_search() {
     set_drive_enable(true);
-    auto target = find_target();
+    auto target = find_detection(target_class_, conf_threshold_);
     if (target.has_value()) {
       detection_count_++;
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-          "Blue circle seen (cx=%.2f score=%.2f) — stable count %d/%d",
-          target->cx, target->score, detection_count_, stability_frames_);
+          "Blue circle seen (cx=%.2f cy=%.2f score=%.2f) — stable %d/%d",
+          target->cx, target->cy, target->score, detection_count_, stability_frames_);
       if (detection_count_ >= stability_frames_) {
-        RCLCPP_INFO(this->get_logger(), "Blue circle locked — switching to approach");
+        RCLCPP_INFO(this->get_logger(), "Blue circle locked — approaching");
         transition_to(State::APPROACH_TARGET);
       }
     } else {
@@ -274,32 +318,39 @@ private:
     }
   }
 
+  // Visual approach controller steers toward blue circle centroid.
+  // Stop when centroid drops into lower frame (cy >= approach_stop_cy_) AND centered.
+  // This means the claw is positioned over the target.
+  // Tune approach_stop_cy in fsm.yaml: increase = stop farther away, decrease = get closer.
   void handle_approach_target() {
-    set_drive_enable(false);  // blue circle controller takes over cmd_vel
+    set_drive_enable(false);  // visual approach controller owns cmd_vel
 
-    auto target = find_target();
+    auto target = find_detection(target_class_, conf_threshold_);
     double dwell_time = (this->now() - state_start_time_).seconds();
+
     if (!target.has_value()) {
       detection_count_++;
       if (dwell_time > min_approach_dwell_ && detection_count_ > stability_frames_ * 2) {
-        RCLCPP_WARN(this->get_logger(), "Lost target, returning to search");
+        RCLCPP_WARN(this->get_logger(), "Lost blue circle — returning to search");
         transition_to(State::FOLLOW_LINE_SEARCH);
       }
       return;
     }
     detection_count_ = 0;
 
-    double size = std::max(target->w, target->h);
-    bool centered = std::abs(target->cx - 0.5) < center_tol_x_ &&
-                    std::abs(target->cy - 0.5) < center_tol_y_;
+    bool centered_x   = std::abs(target->cx - 0.5) < center_tol_x_;
+    bool close_enough = target->cy >= approach_stop_cy_;
 
-    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 300,
-        "Approaching — cx=%.2f size=%.2f need:>=%.2f centered=%s",
-        target->cx, size, size_close_threshold_, centered ? "YES" : "no");
+    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 250,
+        "APPROACH cx=%.2f cy=%.2f  centered=%s close=%s (need cy>=%.2f)",
+        target->cx, target->cy,
+        centered_x ? "YES" : "no",
+        close_enough ? "YES" : "no",
+        approach_stop_cy_);
 
-    if (size >= size_close_threshold_ && centered) {
+    if (centered_x && close_enough) {
       RCLCPP_INFO(this->get_logger(),
-          "Blue circle close and centered (size=%.2f) — pickup", size);
+          "Blue circle at pickup position (cy=%.2f) — starting pickup", target->cy);
       transition_to(State::PICKUP);
     }
   }
@@ -308,82 +359,176 @@ private:
     set_drive_enable(false);
     double t = (this->now() - state_start_time_).seconds();
 
-    // Phase 1: stop wheels — actively publish Twist(0,0)
+    // Phase 1: stop wheels
     if (t < pickup_stop_dwell_) {
-      publish_turn(0.0);
+      publish_twist(0.0, 0.0);
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
-          "PICKUP: stopping wheels (%.2f / %.2f s)", t, pickup_stop_dwell_);
+          "PICKUP stop (%.2f/%.2f s)", t, pickup_stop_dwell_);
       return;
     }
 
-    // Phase 2: close gripper (servo 2)
+    // Phase 2: close gripper
     double close_end = pickup_stop_dwell_ + pickup_close_time_;
     if (t < close_end) {
-      publish_turn(0.0);
+      publish_twist(0.0, 0.0);
       claw_gripper(1.0);
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 400,
-          "PICKUP: closing gripper (%.2f / %.2f s)", t, close_end);
+          "PICKUP closing gripper (%.2f/%.2f s)", t, close_end);
       return;
     }
 
-    // Phase 3: rotate claw to carry position (servo 1)
+    // Phase 3: rotate claw to carry position
     double rotate_end = close_end + pickup_rotate_time_;
     if (t < rotate_end) {
-      publish_turn(0.0);
+      publish_twist(0.0, 0.0);
       claw_gripper(1.0);
       claw_rotation(1.0);
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 400,
-          "PICKUP: rotating claw to carry (%.2f / %.2f s)", t, rotate_end);
+          "PICKUP rotating claw (%.2f/%.2f s)", t, rotate_end);
       return;
     }
 
-    RCLCPP_INFO(this->get_logger(), "Pickup complete — spinning to find red line");
-    last_line_valid_time_ = this->now();  // reset so spin doesn't immediately exit
+    RCLCPP_INFO(this->get_logger(), "Pickup complete — turning around");
+    last_line_valid_time_ = this->now();
     transition_to(State::TURN_AROUND);
   }
 
   void handle_turn_around() {
     set_drive_enable(false);
-    claw_gripper(1.0);   // keep gripper closed
-    claw_rotation(1.0);  // keep carry position
-
-    // Tank-spin in place: one wheel forward, one reverse (angular only, linear=0)
-    publish_turn(turn_around_omega_);
+    claw_gripper(1.0);
+    claw_rotation(1.0);
+    publish_twist(0.0, turn_around_omega_);
 
     double t = (this->now() - state_start_time_).seconds();
-
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-        "TURN_AROUND: spinning %.1f / %.1f s", t, turn_around_time_);
+        "TURN_AROUND %.1f / %.1f s", t, turn_around_time_);
 
-    // Spin for the full turn_around_time_s before transitioning -- this ensures
-    // a complete 180 deg regardless of whether the line is briefly visible.
     if (t >= turn_around_time_) {
       RCLCPP_INFO(this->get_logger(),
-          "180 deg complete after %.1f s -- resuming line follow", t);
+          "180 complete — following line back, watching for green box");
       last_line_valid_time_ = this->now();
       transition_to(State::RETURN_FOLLOW_LINE);
     }
   }
 
+  // Follow line back while watching for green drop-zone box.
+  // Transitions to APPROACH_DROP when green box is stably detected.
   void handle_return_follow_line() {
     set_drive_enable(true);
-    claw_gripper(1.0);   // keep gripper closed
-    claw_rotation(1.0);  // keep carry position
+    claw_gripper(1.0);
+    claw_rotation(1.0);
 
+    auto drop_target = find_detection(drop_class_, conf_threshold_);
+    if (drop_target.has_value()) {
+      drop_detection_count_++;
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+          "Green box seen (cx=%.2f score=%.2f) — stable %d/%d",
+          drop_target->cx, drop_target->score,
+          drop_detection_count_, drop_stability_frames_);
+      if (drop_detection_count_ >= drop_stability_frames_) {
+        RCLCPP_INFO(this->get_logger(), "Green box locked — approaching drop zone");
+        transition_to(State::APPROACH_DROP);
+      }
+    } else {
+      drop_detection_count_ = 0;
+    }
+
+    // Fallback: drop at current position if green box never found
     double state_time = (this->now() - state_start_time_).seconds();
     if (use_time_return_ && state_time > return_time_) {
-      RCLCPP_INFO(this->get_logger(), "Return time elapsed, dropping");
+      RCLCPP_WARN(this->get_logger(), "Return timeout — dropping at current position");
+      transition_to(State::DROP);
+    }
+  }
+
+  // Visual approach controller steers toward green box centroid.
+  // Stop when box fills drop_size_threshold and is centered.
+  void handle_approach_drop() {
+    set_drive_enable(false);  // visual approach controller owns cmd_vel
+    claw_gripper(1.0);
+    claw_rotation(1.0);
+
+    auto target = find_detection(drop_class_, conf_threshold_);
+    double dwell_time = (this->now() - state_start_time_).seconds();
+
+    if (!target.has_value()) {
+      drop_detection_count_++;
+      if (dwell_time > min_approach_dwell_ && drop_detection_count_ > drop_stability_frames_ * 2) {
+        RCLCPP_WARN(this->get_logger(), "Lost green box — returning to line follow");
+        transition_to(State::RETURN_FOLLOW_LINE);
+      }
+      return;
+    }
+    drop_detection_count_ = 0;
+
+    double size = std::max(target->w, target->h);
+    bool centered_x = std::abs(target->cx - 0.5) < drop_center_tol_x_;
+
+    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 300,
+        "APPROACH_DROP cx=%.2f size=%.2f (need>=%.2f) centered=%s",
+        target->cx, size, drop_size_threshold_, centered_x ? "YES" : "no");
+
+    if (size >= drop_size_threshold_ && centered_x) {
+      RCLCPP_INFO(this->get_logger(), "At drop zone — dropping payload");
       transition_to(State::DROP);
     }
   }
 
   void handle_drop() {
     set_drive_enable(false);
-    claw_gripper(0.0);   // open gripper
-    claw_rotation(0.0);  // return to level
+    double t = (this->now() - state_start_time_).seconds();
+
+    // Phase 1: rotate claw to horizontal (level) before opening
+    if (t < drop_rotate_time_) {
+      publish_twist(0.0, 0.0);
+      claw_gripper(1.0);   // keep closed while rotating
+      claw_rotation(0.0);  // rotate to horizontal
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
+          "DROP: rotating claw horizontal (%.2f/%.2f s)", t, drop_rotate_time_);
+      return;
+    }
+
+    // Phase 2: open gripper to release payload
+    double open_end = drop_rotate_time_ + drop_open_time_;
+    if (t < open_end) {
+      publish_twist(0.0, 0.0);
+      claw_gripper(0.0);
+      claw_rotation(0.0);
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 400,
+          "DROP: opening gripper (%.2f/%.2f s)", t, open_end);
+      return;
+    }
+
+    RCLCPP_INFO(this->get_logger(), "Drop complete — reversing to red line");
+    transition_to(State::REVERSE_TO_LINE);
+  }
+
+  // Reverse at constant speed to reacquire the red line behind the robot.
+  void handle_reverse_to_line() {
+    set_drive_enable(false);
+    claw_gripper(0.0);
+    claw_rotation(0.0);
+    publish_twist(-reverse_speed_, 0.0);
 
     double t = (this->now() - state_start_time_).seconds();
-    if (t > drop_open_time_) {
+    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+        "REVERSE_TO_LINE %.1f / %.1f s", t, reverse_time_);
+
+    if (t >= reverse_time_) {
+      RCLCPP_INFO(this->get_logger(), "Back on line — following red line home");
+      last_line_valid_time_ = this->now();
+      transition_to(State::RETURN_HOME);
+    }
+  }
+
+  // Follow red line back to start.
+  void handle_return_home() {
+    set_drive_enable(true);
+    claw_gripper(0.0);
+    claw_rotation(0.0);
+
+    double state_time = (this->now() - state_start_time_).seconds();
+    if (state_time > return_home_time_) {
       RCLCPP_INFO(this->get_logger(), "Mission complete!");
       transition_to(State::DONE);
     }
@@ -391,32 +536,50 @@ private:
 
   void handle_done() {
     set_drive_enable(false);
+    publish_twist(0.0, 0.0);
   }
 
   void handle_failsafe() {
     set_drive_enable(false);
+    claw_gripper(0.0);
+    publish_twist(0.0, 0.0);
   }
 
-  std::optional<robot_interfaces::msg::Detection2D> find_target() {
+  std::optional<robot_interfaces::msg::Detection2D> find_detection(
+      const std::string& class_name, double threshold) {
     for (const auto& det : latest_detections_.detections) {
-      if (det.class_name == target_class_ && det.score >= conf_threshold_)
+      if (det.class_name == class_name && det.score >= threshold)
         return det;
     }
     return std::nullopt;
   }
 
-  // Parameters
+  // ── Parameters ───────────────────────────────────────────────────────────
   std::string target_class_;
   double conf_threshold_;
   int    stability_frames_;
-  double center_tol_x_, center_tol_y_;
-  double size_close_threshold_;
+  double center_tol_x_;
+  double approach_stop_cy_;
+
   double pickup_stop_dwell_;
   double pickup_close_time_;
   double pickup_rotate_time_;
+
   double turn_around_omega_;
   double turn_around_time_;
+
+  std::string drop_class_;
+  double drop_center_tol_x_;
+  double drop_size_threshold_;
+  int    drop_stability_frames_;
+
+  double drop_rotate_time_;
   double drop_open_time_;
+
+  double reverse_time_;
+  double reverse_speed_;
+  double return_home_time_;
+
   bool   use_time_return_;
   double return_time_;
   double min_approach_dwell_;
@@ -424,16 +587,17 @@ private:
   double min_init_dwell_;
   double rate_hz_;
 
-  // State
+  // ── State ────────────────────────────────────────────────────────────────
   State              current_state_;
   rclcpp::Time       state_start_time_;
   int                detection_count_;
+  int                drop_detection_count_;
   robot_interfaces::msg::Detections2D latest_detections_;
   bool               line_valid_;
   rclcpp::Time       last_line_valid_time_;
   bool               hw_ready_;
 
-  // ROS interfaces
+  // ── ROS interfaces ───────────────────────────────────────────────────────
   rclcpp::Subscription<robot_interfaces::msg::LineObservation>::SharedPtr line_sub_;
   rclcpp::Subscription<robot_interfaces::msg::Detections2D>::SharedPtr    det_sub_;
   rclcpp::Subscription<robot_interfaces::msg::HwStatus>::SharedPtr        hw_sub_;

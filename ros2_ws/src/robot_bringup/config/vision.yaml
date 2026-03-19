@@ -60,6 +60,18 @@ object_detector_node:
     # Circularity: 1.0 = perfect circle, reject blobs below this
     heuristic_circularity_min: 0.4
 
+    # Green box HSV settings
+    # Tune these for your specific green box under your lighting conditions.
+    # Green in HSV: H=[40-80], high saturation, mid-to-high value.
+    green_h_min: 40
+    green_h_max: 80
+    green_s_min: 60
+    green_s_max: 255
+    green_v_min: 40
+    green_v_max: 210
+    green_min_area: 3000
+    green_max_area: 200000
+
     # YOLO settings (if using yolo detector)
     model_path: ""
     device: "cpu"
@@ -70,9 +82,10 @@ object_detector_node:
 blue_circle_controller_node:
   ros__parameters:
     target_class: "blue_circle"
+    drop_class: "green_box"
     # Proportional gain for horizontal centering (angular_z = -kp * (cx - 0.5))
     kp_angular: 1.8
-    # Slow forward speed while approaching
+    # Slow forward speed while approaching (both pickup and drop approach)
     linear_speed_mps: 0.05
     max_angular_rps: 1.2
     center_tolerance_x: 0.12
