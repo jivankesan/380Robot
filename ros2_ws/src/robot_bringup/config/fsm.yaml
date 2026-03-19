@@ -18,6 +18,8 @@ task_fsm_node:
     target_size_close_threshold: 0.40
 
     # Pickup timing (seconds)
+    # stop_dwell: wait this long for motors to coast to zero before closing claw
+    pickup_stop_dwell_s: 0.4
     pickup_close_time_s: 1.0
     pickup_hold_time_s: 0.5
 

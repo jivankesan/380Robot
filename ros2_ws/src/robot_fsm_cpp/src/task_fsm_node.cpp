@@ -71,6 +71,7 @@ public:
     this->declare_parameter("target_center_tolerance_x", 0.15);
     this->declare_parameter("target_center_tolerance_y", 0.2);
     this->declare_parameter("target_size_close_threshold", 0.25);
+    this->declare_parameter("pickup_stop_dwell_s", 0.4);
     this->declare_parameter("pickup_close_time_s", 1.0);
     this->declare_parameter("pickup_hold_time_s", 0.5);
     this->declare_parameter("drop_open_time_s", 1.0);
@@ -87,6 +88,7 @@ public:
     center_tol_x_ = this->get_parameter("target_center_tolerance_x").as_double();
     center_tol_y_ = this->get_parameter("target_center_tolerance_y").as_double();
     size_close_threshold_ = this->get_parameter("target_size_close_threshold").as_double();
+    pickup_stop_dwell_ = this->get_parameter("pickup_stop_dwell_s").as_double();
     pickup_close_time_ = this->get_parameter("pickup_close_time_s").as_double();
     pickup_hold_time_ = this->get_parameter("pickup_hold_time_s").as_double();
     drop_open_time_ = this->get_parameter("drop_open_time_s").as_double();
@@ -231,6 +233,12 @@ private:
     enable_msg.data = false;
     enable_pub_->publish(enable_msg);
 
+    // Ensure claw starts open
+    robot_interfaces::msg::ClawCommand claw_cmd;
+    claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_OPEN;
+    claw_cmd.position = 0.0;
+    claw_pub_->publish(claw_cmd);
+
     // Wait for line and hardware to be ready
     double wait_time = (this->now() - state_start_time_).seconds();
     if (line_valid_ && hw_ready_) {
@@ -308,12 +316,22 @@ private:
   }
 
   void handle_pickup() {
-    // Disable controller (stop)
+    // Disable controller (stop motors)
     std_msgs::msg::Bool enable_msg;
     enable_msg.data = false;
     enable_pub_->publish(enable_msg);
 
     double state_time = (this->now() - state_start_time_).seconds();
+
+    // Wait for motors to coast to zero before closing the claw.
+    // The serial bridge watchdog stops motors within 250ms of last command;
+    // pickup_stop_dwell_s gives a comfortable margin on top of that.
+    if (state_time < pickup_stop_dwell_) {
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
+          "Waiting for robot to stop before claw close (%.2f / %.2f s)",
+          state_time, pickup_stop_dwell_);
+      return;
+    }
 
     // Close claw
     robot_interfaces::msg::ClawCommand claw_cmd;
@@ -321,9 +339,12 @@ private:
     claw_cmd.position = 1.0;
     claw_pub_->publish(claw_cmd);
 
-    // Wait for pickup to complete
-    if (state_time > pickup_close_time_ + pickup_hold_time_) {
-      RCLCPP_INFO(this->get_logger(), "Pickup complete, returning");
+    // Wait for claw to close and hold
+    if (state_time > pickup_stop_dwell_ + pickup_close_time_ + pickup_hold_time_) {
+      RCLCPP_INFO(this->get_logger(), "Pickup complete, returning to line");
+      // Reset line-valid timer so RETURN_FOLLOW_LINE gets a fresh timeout
+      // window to relocate the line (it was lost during approach + pickup).
+      last_line_valid_time_ = this->now();
       transition_to(State::RETURN_FOLLOW_LINE);
     }
   }
@@ -404,6 +425,7 @@ private:
   int stability_frames_;
   double center_tol_x_, center_tol_y_;
   double size_close_threshold_;
+  double pickup_stop_dwell_;
   double pickup_close_time_, pickup_hold_time_;
   double drop_open_time_;
   bool use_time_return_;
