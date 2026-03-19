@@ -5,7 +5,7 @@ line_detector_node:
     # Tune roi_y_start/end to focus on the lookahead strip.
     # Avoid the very bottom (robot body) and very top (horizon/walls).
     roi_y_start: 0.25
-    roi_y_end: 0.70
+    roi_y_end: 0.40
     roi_x_start: 0.0
     roi_x_end: 1.0
 
