@@ -18,12 +18,12 @@ line_follow_controller_node:
     min_lin_vel_mps: 0.08
 
     # Angular velocity limits (rad/s)
-    max_ang_vel_rps: 1.9
+    max_ang_vel_rps: 2.2
 
     # Turn speed reduction: v = base_speed - turn_speed_gain * abs(omega)
     # Higher gain = more slowdown on turns. min_turn_speed_mps is the floor.
     turn_speed_gain: 2.4
-    min_turn_speed_mps: 0.16
+    min_turn_speed_mps: 0.20
     turn_omega_deadband_rps: 0.10
     # Lost line timeout (seconds)
     lost_line_timeout_s: 0.2
