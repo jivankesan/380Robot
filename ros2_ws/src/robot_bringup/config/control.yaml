@@ -14,7 +14,7 @@ line_follow_controller_node:
 
     # Speed limits (m/s)
     base_speed_mps: 0.50
-    max_lin_vel_mps: 0.50
+    max_lin_vel_mps: 0.70
     min_lin_vel_mps: 0.08
 
     # Angular velocity limits (rad/s)
@@ -24,7 +24,7 @@ line_follow_controller_node:
     # Higher gain = more slowdown on turns. min_turn_speed_mps is the floor.
     turn_speed_gain: 0.9
     min_turn_speed_mps: 0.10
-    turn_omega_deadband_rps: 0.15
+    turn_omega_deadband_rps: 0.10
 
     # Lost line timeout (seconds)
     lost_line_timeout_s: 2.0
@@ -44,7 +44,7 @@ speed_profile_node:
     # Slowdown gains based on path geometry
     curvature_slowdown_gain: 0.3
     error_slowdown_gain: 0.5
-    heading_slowdown_gain: 0.2
+    heading_slowdown_gain: 0.5
 
     # Control rate
     rate_hz: 50.0
