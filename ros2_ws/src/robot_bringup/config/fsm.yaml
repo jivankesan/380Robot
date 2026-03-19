@@ -5,13 +5,13 @@ task_fsm_node:
     target_class: "blue_circle"
     detection_confidence_threshold: 0.45
     detection_stability_frames: 4
-    target_center_tolerance_x: 0.20
+    target_center_tolerance_x: 0.10
 
     # When to stop the approach and begin pickup.
     # w is the normalized bounding-box width (0=not visible, 1=fills full frame width).
     # Increase this value to stop farther away; decrease to get closer.
-    # Start with 0.50 and adjust 0.05 at a time based on where the robot stops.
-    approach_stop_w: 0.50
+    # At w=0.57 the robot stopped ~10cm too far. Raise toward 0.75-0.80 to get closer.
+    approach_stop_w: 0.70
 
     # ── Pickup sequence timing (seconds) ────────────────────────────────────
     pickup_stop_dwell_s: 0.4    # publish zero velocity for this long
