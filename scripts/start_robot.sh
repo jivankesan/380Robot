@@ -39,7 +39,7 @@ else
 fi
 
 # Fix workspace ownership in case any previous build ran as root
-docker exec 380robot-dev chown -R "$(id -u):$(id -g)" /workspaces/380Robot/ros2_ws/ 2>/dev/null || true
+docker exec -u root 380robot-dev chown -R "$(id -u):$(id -g)" /workspaces/380Robot/ros2_ws/ 2>/dev/null || true
 
 # Build and launch inside the container (skip camera_node — it runs natively)
 echo -e "${YELLOW}Building ROS workspace and launching robot...${NC}"
