@@ -73,7 +73,7 @@ blue_circle_controller_node:
     # Proportional gain for horizontal centering (angular_z = -kp * (cx - 0.5))
     kp_angular: 1.8
     # Slow forward speed while approaching
-    linear_speed_mps: 0.12
+    linear_speed_mps: 0.05
     max_angular_rps: 1.2
     center_tolerance_x: 0.12
     # Stop publishing if no detection for this many seconds
