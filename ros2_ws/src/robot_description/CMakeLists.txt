@@ -21,6 +21,7 @@ install(DIRECTORY rviz/
 # Install meshes (if any)
 install(DIRECTORY meshes/
   DESTINATION share/${PROJECT_NAME}/meshes
+  OPTIONAL
 )
 
 ament_package()
