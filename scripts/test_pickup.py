@@ -41,6 +41,12 @@ def main():
     with serial.Serial(PORT, BAUD, timeout=1) as ser:
         time.sleep(2)  # let Arduino boot/reset after serial open
 
+        print("Resetting to initial position...")
+        send(ser, "M,0,0")
+        send(ser, f"C,2,{SERVO2_OPEN}")
+        send(ser, f"C,1,{SERVO1_HOME}")
+        time.sleep(1.0)
+
         print(f"Driving forward for {FWD_TIME}s...")
         drive_for(ser, FWD_PWM, FWD_PWM, FWD_TIME)
 
