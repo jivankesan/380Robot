@@ -30,6 +30,7 @@ public:
     this->declare_parameter("turn_speed_gain", 0.5);
     this->declare_parameter("min_turn_speed_mps", 0.1);
     this->declare_parameter("turn_omega_deadband_rps", 0.3);
+    this->declare_parameter("heading_brake_gain", 1.0);
 
     // Get parameters
     control_rate_hz_ = this->get_parameter("control_rate_hz").as_double();
@@ -45,6 +46,7 @@ public:
     turn_speed_gain_ = this->get_parameter("turn_speed_gain").as_double();
     min_turn_speed_ = this->get_parameter("min_turn_speed_mps").as_double();
     turn_omega_deadband_ = this->get_parameter("turn_omega_deadband_rps").as_double();
+    heading_brake_gain_ = this->get_parameter("heading_brake_gain").as_double();
 
     // Initialize state
     last_lateral_error_ = 0.0;
@@ -116,9 +118,10 @@ private:
     // Clamp angular velocity
     omega = std::clamp(omega, -max_ang_vel_, max_ang_vel_);
 
-    // Linear velocity: slow down only when turn is sharp enough
+    // Linear velocity: brake hard on sharp heading (look-ahead), also slow for omega
     double excess_omega = std::max(0.0, std::abs(omega) - turn_omega_deadband_);
-    double v = base_speed_ - turn_speed_gain_ * excess_omega;
+    double heading_brake = heading_brake_gain_ * std::abs(heading_error);
+    double v = base_speed_ - heading_brake - turn_speed_gain_ * excess_omega;
     v = std::clamp(v, min_turn_speed_, max_lin_vel_);
 
     // Update state
@@ -142,6 +145,7 @@ private:
   double turn_speed_gain_;
   double min_turn_speed_;
   double turn_omega_deadband_;
+  double heading_brake_gain_;
 
   // State
   robot_interfaces::msg::LineObservation latest_observation_;

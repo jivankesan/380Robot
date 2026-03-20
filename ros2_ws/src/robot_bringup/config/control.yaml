@@ -14,17 +14,19 @@ line_follow_controller_node:
     kd_heading: 2.5
 
     # Speed limits (m/s)
-    base_speed_mps: 0.65
-    max_lin_vel_mps: 0.90
+    base_speed_mps: 0.80
+    max_lin_vel_mps: 1.00
     min_lin_vel_mps: 0.08
 
     # Angular velocity limits (rad/s)
     max_ang_vel_rps: 1.6
 
-    # Turn speed reduction: v = base_speed - turn_speed_gain * abs(omega)
-    # Higher gain = more slowdown on turns. min_turn_speed_mps is the floor.
-    turn_speed_gain: 3.0
-    min_turn_speed_mps: 0.13
+    # Turn speed reduction: v = base_speed - heading_brake_gain * abs(heading_error)
+    #                                       - turn_speed_gain * max(0, abs(omega) - deadband)
+    # heading_brake_gain: look-ahead brake when camera sees sharp curve
+    heading_brake_gain: 1.5
+    turn_speed_gain: 4.0
+    min_turn_speed_mps: 0.12
     turn_omega_deadband_rps: 0.15
     # Lost line timeout (seconds)
     lost_line_timeout_s: 0.2
@@ -32,15 +34,15 @@ line_follow_controller_node:
 speed_profile_node:
   ros__parameters:
     # Speed limits
-    v_max: 0.65
+    v_max: 1.0
     v_min: 0.1
 
     # Acceleration limits (m/s^2) — asymmetric for hard braking into turns
     a_max_accel: 3.0
-    a_max_decel: 3.0
+    a_max_decel: 6.0
 
     # Angular acceleration limit (rad/s^2)
-    alpha_max: 3.0
+    alpha_max: 4.0
 
     # Slowdown gains based on path geometry
     curvature_slowdown_gain: 0.3
