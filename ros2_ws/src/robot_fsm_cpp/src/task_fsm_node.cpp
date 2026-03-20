@@ -72,6 +72,7 @@ public:
     this->declare_parameter("drop_open_time_s", 1.0);
     this->declare_parameter("use_time_based_return", true);
     this->declare_parameter("return_time_s", 10.0);
+    this->declare_parameter("require_line_follow", true);
     this->declare_parameter("line_loss_timeout_s", 3.0);
     this->declare_parameter("rate_hz", 20.0);
 
@@ -85,6 +86,7 @@ public:
     // Accepted horizontal error: |cx - 0.5| < this
     this->declare_parameter("approach_center_tolerance_x", 0.20);
     // Stop publishing cmd_vel if circle unseen for this long (seconds)
+    this->declare_parameter("approach_align_gate_x", 0.15);
     this->declare_parameter("approach_detection_timeout_s", 0.5);
 
     // Get parameters
@@ -95,6 +97,7 @@ public:
     drop_open_time_ = this->get_parameter("drop_open_time_s").as_double();
     use_time_return_ = this->get_parameter("use_time_based_return").as_bool();
     return_time_ = this->get_parameter("return_time_s").as_double();
+    require_line_follow_ = this->get_parameter("require_line_follow").as_bool();
     line_loss_timeout_ = this->get_parameter("line_loss_timeout_s").as_double();
     rate_hz_ = this->get_parameter("rate_hz").as_double();
 
@@ -102,6 +105,7 @@ public:
     approach_kp_angular_ = this->get_parameter("approach_kp_angular").as_double();
     approach_top_tol_ = this->get_parameter("approach_top_tolerance_y").as_double();
     approach_center_tol_x_ = this->get_parameter("approach_center_tolerance_x").as_double();
+    approach_align_gate_x_ = this->get_parameter("approach_align_gate_x").as_double();
     approach_det_timeout_ = this->get_parameter("approach_detection_timeout_s").as_double();
 
     // Initialize state
@@ -208,14 +212,15 @@ private:
     state_msg.data = state_to_string(current_state_);
     state_pub_->publish(state_msg);
 
-    // Line loss check — skipped during approach (we're navigating by vision, not line)
-    // and skipped in states where motors are stopped or mission is over.
-    bool check_line = (current_state_ != State::INIT &&
-                       current_state_ != State::APPROACH_TARGET &&
-                       current_state_ != State::PICKUP &&
-                       current_state_ != State::DROP &&
-                       current_state_ != State::DONE &&
-                       current_state_ != State::FAILSAFE_STOP);
+    // Line loss check — skipped during approach (navigating by vision),
+    // skipped in motor-off states, and skipped entirely when not using line following.
+    bool check_line = require_line_follow_ &&
+                      current_state_ != State::INIT &&
+                      current_state_ != State::APPROACH_TARGET &&
+                      current_state_ != State::PICKUP &&
+                      current_state_ != State::DROP &&
+                      current_state_ != State::DONE &&
+                      current_state_ != State::FAILSAFE_STOP;
     if (check_line) {
       double line_loss_time = (this->now() - last_line_valid_time_).seconds();
       if (line_loss_time > line_loss_timeout_) {
@@ -258,7 +263,8 @@ private:
     publish_enable(false);
 
     double wait_time = (this->now() - state_start_time_).seconds();
-    if (line_valid_ && hw_ready_) {
+    bool line_ok = !require_line_follow_ || line_valid_;
+    if (line_ok && hw_ready_) {
       RCLCPP_INFO(this->get_logger(), "Systems ready, starting mission");
       transition_to(State::FOLLOW_LINE_SEARCH);
     } else if (wait_time > 10.0) {
@@ -306,8 +312,11 @@ private:
       return;
     }
 
-    // Drive forward while top of circle is still above centre; stop linear when overshot.
-    double linear = (top_y < 0.5) ? approach_speed_ : 0.0;
+    // Only drive forward once the circle is roughly centred horizontally.
+    // If too far off-axis, turn in place first — prevents the circle from
+    // drifting off the frame edge as the robot approaches.
+    bool aligned = std::abs(error_x) < approach_align_gate_x_;
+    double linear = (aligned && top_y < 0.5) ? approach_speed_ : 0.0;
     double angular = -approach_kp_angular_ * error_x;
 
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
@@ -412,10 +421,12 @@ private:
   double return_time_;
   double line_loss_timeout_;
   double rate_hz_;
+  bool require_line_follow_;
   double approach_speed_;
   double approach_kp_angular_;
   double approach_top_tol_;
   double approach_center_tol_x_;
+  double approach_align_gate_x_;
   double approach_det_timeout_;
 
   // State

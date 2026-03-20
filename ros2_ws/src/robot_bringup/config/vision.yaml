@@ -49,8 +49,10 @@ object_detector_node:
     # Minimum contour area (px²) to reject noise
     min_area_px: 500
 
-    # 4π·area/perimeter² — 1.0 is a perfect circle
-    circularity_threshold: 0.75
+    # 4π·area/perimeter² — 1.0 is a perfect circle.
+    # Lower than 0.75 to tolerate partial circles when the robot is close
+    # and the circle edge is clipped by the frame border.
+    circularity_threshold: 0.55
 
     # Circle edge must be this many pixels inside the frame border
     # to count as fully visible and trigger a hard stop
