@@ -308,10 +308,14 @@ private:
 
     bool vertically_close = std::abs(top_y - 0.5) < approach_top_tol_;
     bool horizontally_centred = std::abs(error_x) < approach_center_tol_x_;
+    // If we overshot (top of circle is below midframe), go to pickup immediately
+    // regardless of horizontal position — we're already over it.
+    bool overshot = top_y > (0.5 + approach_top_tol_);
 
-    if (vertically_close && horizontally_centred) {
+    if (overshot || (vertically_close && horizontally_centred)) {
       RCLCPP_INFO(this->get_logger(),
-                  "Approach complete (top_y=%.2f cx=%.2f) — picking up", top_y, target->cx);
+                  "Approach complete (top_y=%.2f cx=%.2f%s) — picking up",
+                  top_y, target->cx, overshot ? " OVERSHOT" : "");
       publish_zero_cmd();
       transition_to(State::PICKUP);
       return;
