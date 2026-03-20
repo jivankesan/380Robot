@@ -4,7 +4,7 @@ task_fsm_node:
     # ── Pickup target (blue circle) ──────────────────────────────────────────
     target_class: "blue_circle"
     detection_confidence_threshold: 0.45
-    detection_stability_frames: 2
+    detection_stability_frames: 1
     target_center_tolerance_x: 0.15
 
     # Trigger pickup when green lego figure cy >= this (0=top, 1=bottom).

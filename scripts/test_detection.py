@@ -4,9 +4,10 @@
 Usage:
     python3 scripts/test_detection.py <image_path>
     python3 scripts/test_detection.py <image_path> --save out.png
+    python3 scripts/test_detection.py <image_path> --masks   # show raw HSV masks
 
-Shows blue circle and green lego figure detections overlaid on the image,
-using the same HSV parameters as object_detector_node.py.
+Shows blue circle, green lego figure, and red line detections overlaid on the
+image, using the same HSV/ROI parameters as the ROS nodes / vision.yaml.
 Press any key to close, or pass --save to write the annotated image.
 """
 
@@ -33,6 +34,20 @@ GREEN = dict(
     v_min=40,  v_max=210,
     min_area=3_000, max_area=200_000,
     conf_threshold=0.45,
+)
+
+# ── Red line HSV parameters (must match line_detector_node.py / vision.yaml) ──
+RED = dict(
+    # Lower red: H=0-10
+    h1_min=0,   h1_max=10,
+    # Upper red (wrap-around): H=160-180
+    h2_min=160, h2_max=180,
+    s_min=100, s_max=255,
+    v_min=100, v_max=255,
+    min_area_px=500,
+    # ROI (fraction of frame height/width) — must match vision.yaml
+    roi_y_start=0.45, roi_y_end=0.95,
+    roi_x_start=0.10, roi_x_end=0.90,
 )
 
 # ── Grab-zone threshold (must match fsm.yaml pickup_cy_threshold) ──────────────
@@ -99,9 +114,57 @@ def detect_green_figure(image, hsv):
     return best, mask
 
 
-def annotate(image, blue, green):
+def detect_red_line(image):
+    h, w = image.shape[:2]
+    y0 = int(h * RED['roi_y_start'])
+    y1 = int(h * RED['roi_y_end'])
+    x0 = int(w * RED['roi_x_start'])
+    x1 = int(w * RED['roi_x_end'])
+    roi = image[y0:y1, x0:x1]
+
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    lo1 = np.array([RED['h1_min'], RED['s_min'], RED['v_min']])
+    hi1 = np.array([RED['h1_max'], RED['s_max'], RED['v_max']])
+    lo2 = np.array([RED['h2_min'], RED['s_min'], RED['v_min']])
+    hi2 = np.array([RED['h2_max'], RED['s_max'], RED['v_max']])
+    mask = cv2.bitwise_or(cv2.inRange(hsv, lo1, hi1), cv2.inRange(hsv, lo2, hi2))
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+
+    M = cv2.moments(mask)
+    area = M['m00']
+    if area < RED['min_area_px']:
+        return None, mask, (y0, y1, x0, x1)
+
+    cx_roi = M['m10'] / area
+    cy_roi = M['m01'] / area
+    return dict(
+        cx_px=int(cx_roi) + x0,
+        cy_px=int(cy_roi) + y0,
+        area=area,
+        lateral_error=cx_roi - (roi.shape[1] / 2.0),
+    ), mask, (y0, y1, x0, x1)
+
+
+def annotate(image, blue, green, red_line, red_roi):
     out = image.copy()
     h, w = out.shape[:2]
+
+    # Red line ROI box and detection
+    y0, y1, x0, x1 = red_roi
+    cv2.rectangle(out, (x0, y0), (x1, y1), (0, 0, 180), 1)
+    if red_line:
+        cv2.circle(out, (red_line['cx_px'], red_line['cy_px']), 8, (0, 0, 255), -1)
+        cv2.line(out, (w // 2, y0), (w // 2, y1), (0, 180, 255), 1)  # centre ref
+        cv2.putText(out,
+                    f'red line  area={int(red_line["area"])}  '
+                    f'lat_err={red_line["lateral_error"]:+.1f}px',
+                    (x0 + 4, y0 + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 80, 255), 1)
+    else:
+        cv2.putText(out, 'red line: NOT DETECTED',
+                    (8, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 255), 2)
 
     # Draw grab-zone line (bottom 20% threshold)
     grab_y = int(PICKUP_CY_THRESHOLD * h)
@@ -161,8 +224,15 @@ def main():
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     blue, blue_mask = detect_blue_circle(image, hsv)
     green, green_mask = detect_green_figure(image, hsv)
+    red_line, red_mask, red_roi = detect_red_line(image)
 
     # Print results
+    if red_line:
+        print(f'[red_line]      area={int(red_line["area"])}  '
+              f'lat_err={red_line["lateral_error"]:+.1f}px  DETECTED')
+    else:
+        print('[red_line]      NOT DETECTED')
+
     if blue:
         print(f'[blue_circle]   cx={blue["cx"]:.3f}  cy={blue["cy"]:.3f}  '
               f'w={blue["bw"]:.3f}  score={blue["score"]:.3f}  '
@@ -178,7 +248,7 @@ def main():
     else:
         print('[green_figure]  NOT DETECTED')
 
-    annotated = annotate(image, blue, green)
+    annotated = annotate(image, blue, green, red_line, red_roi)
 
     if args.save:
         cv2.imwrite(args.save, annotated)
@@ -188,6 +258,7 @@ def main():
         if args.masks:
             cv2.imshow('Blue mask', blue_mask)
             cv2.imshow('Green mask', green_mask)
+            cv2.imshow('Red mask (ROI)', red_mask)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
