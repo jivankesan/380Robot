@@ -60,9 +60,13 @@ class ObjectDetectorNode(Node):
 
         self.bridge = CvBridge()
 
-        # Set True once a full circle is confirmed; suppresses further
-        # processing until the FSM re-enables us after pickup+return.
+        # Goes dormant when FSM enters PICKUP (no point detecting while claw
+        # is closing). Resets when FSM enters RETURN_FOLLOW_LINE.
         self.target_acquired = False
+
+        # One-shot flag so target_locked is only published once per approach,
+        # not on every frame after the full circle is first confirmed.
+        self.target_locked_sent = False
 
         sensor_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
 
@@ -90,9 +94,14 @@ class ObjectDetectorNode(Node):
 
     # ------------------------------------------------------------------
     def _fsm_state_cb(self, msg: String) -> None:
-        """Re-enable detection when FSM starts the return leg."""
-        if self.target_acquired and msg.data == 'RETURN_FOLLOW_LINE':
+        if msg.data == 'PICKUP' and not self.target_acquired:
+            # Approach is done — go dormant while claw closes
+            self.target_acquired = True
+            self.get_logger().info('Detection dormant during pickup')
+        elif msg.data == 'RETURN_FOLLOW_LINE' and self.target_acquired:
+            # Back on the line — resume detecting and allow target_locked again
             self.target_acquired = False
+            self.target_locked_sent = False
             self.get_logger().info('Detection re-enabled for return leg')
 
     # ------------------------------------------------------------------
@@ -139,12 +148,12 @@ class ObjectDetectorNode(Node):
                 cy_px + radius <= height - m
             )
 
-            if fully_in_frame:
+            if fully_in_frame and not self.target_locked_sent:
                 self.get_logger().info(
                     f'Full blue circle confirmed '
                     f'(cx={cx_px:.0f} cy={cy_px:.0f} r={radius:.0f}px) — locking'
                 )
-                self.target_acquired = True
+                self.target_locked_sent = True
                 self.locked_pub.publish(Bool(data=True))
 
         self.det_pub.publish(det_msg)
