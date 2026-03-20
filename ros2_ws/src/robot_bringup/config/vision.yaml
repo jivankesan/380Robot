@@ -84,7 +84,7 @@ blue_circle_controller_node:
     target_class: "blue_circle"
     drop_class: "green_box"
     # Proportional gain for horizontal centering (angular_z = -kp * (cx - 0.5))
-    kp_angular: 1.0
+    kp_angular: 0.0
     linear_speed_mps: 0.14  # creep speed during approach phase
     max_angular_rps: 0.7
     center_tolerance_x: 0.20

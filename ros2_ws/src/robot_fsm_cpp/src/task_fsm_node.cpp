@@ -72,9 +72,11 @@ public:
     this->declare_parameter("detection_confidence_threshold", 0.5);
     this->declare_parameter("detection_stability_frames", 2);
     this->declare_parameter("target_center_tolerance_x", 0.12);
+    // Minimum circle width (normalized) before stopping line follow.
+    // Ensures the circle is fully in frame before approach begins.
+    this->declare_parameter("blue_min_w", 0.25);
     // Trigger pickup when the top edge of the blue circle bounding box reaches
     // this y position (0=top of frame, 1=bottom). 0.5 = middle of frame.
-    // Increase to let robot get closer before grabbing; decrease to stop earlier.
     this->declare_parameter("blue_trigger_top_y", 0.50);
 
     // ── Pickup sequence ──────────────────────────────────────────────────────
@@ -116,6 +118,7 @@ public:
     conf_threshold_        = this->get_parameter("detection_confidence_threshold").as_double();
     stability_frames_      = this->get_parameter("detection_stability_frames").as_int();
     center_tol_x_          = this->get_parameter("target_center_tolerance_x").as_double();
+    blue_min_w_            = this->get_parameter("blue_min_w").as_double();
     blue_trigger_top_y_    = this->get_parameter("blue_trigger_top_y").as_double();
 
     pickup_stop_dwell_     = this->get_parameter("pickup_stop_dwell_s").as_double();
@@ -315,18 +318,19 @@ private:
     auto target = find_detection(target_class_, conf_threshold_);
     if (target.has_value()) {
       // Only trigger if circle is roughly centered — ignore edge detections
-      bool centered = std::abs(target->cx - 0.5) < center_tol_x_;
-      if (!centered) {
+      bool centered  = std::abs(target->cx - 0.5) < center_tol_x_;
+      bool big_enough = target->w >= blue_min_w_;
+      if (!centered || !big_enough) {
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-            "Blue circle ignored (cx=%.2f too far off-center)", target->cx);
+            "Blue circle ignored (cx=%.2f w=%.2f — need centered+w>=%.2f)",
+            target->cx, target->w, blue_min_w_);
         detection_count_ = 0;
         return;
       }
       detection_count_++;
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 300,
-          "Blue circle seen (cx=%.2f top_y=%.2f) -- stable %d/%d",
-          target->cx, target->cy - target->h / 2.0,
-          detection_count_, stability_frames_);
+          "Blue circle: cx=%.2f w=%.2f -- stable %d/%d",
+          target->cx, target->w, detection_count_, stability_frames_);
       if (detection_count_ >= stability_frames_) {
         RCLCPP_INFO(this->get_logger(), "Blue circle locked -- stopping line follow");
         transition_to(State::APPROACH_TARGET);
@@ -579,6 +583,7 @@ private:
   double conf_threshold_;
   int    stability_frames_;
   double center_tol_x_;
+  double blue_min_w_;
   double blue_trigger_top_y_;
 
   double pickup_stop_dwell_;

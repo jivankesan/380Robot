@@ -7,6 +7,9 @@ task_fsm_node:
     detection_stability_frames: 2
     target_center_tolerance_x: 0.20
 
+    # Minimum circle width before stopping line follow (circle must be fully in frame).
+    blue_min_w: 0.25
+
     # Stop and grab when the top edge of the blue circle reaches this y position
     # (0=top of frame, 1=bottom). 0.5 = middle of frame.
     # Increase to let robot get closer; decrease to stop earlier.
