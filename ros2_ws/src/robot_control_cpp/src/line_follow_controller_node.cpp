@@ -97,6 +97,9 @@ private:
     cmd.angular.z = 0.0;
 
     if (!enabled_) {
+      // Reset derivative state so there is no spike when re-enabled
+      last_lateral_error_ = 0.0;
+      last_heading_error_ = 0.0;
       cmd_pub_->publish(cmd);
       return;
     }
