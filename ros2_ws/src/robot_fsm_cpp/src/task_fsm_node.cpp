@@ -344,7 +344,7 @@ private:
   // Phase 2: creep slowly toward blue circle until top edge reaches trigger threshold.
   // If circle disappears while we were already close, grab anyway.
   void handle_approach_target() {
-    set_drive_enable(false);  // visual controller owns cmd_vel
+    set_drive_enable(true);  // let blue_circle_controller cmd_vel pass through
 
     auto target = find_detection(target_class_, conf_threshold_);
     double dwell_time = (this->now() - state_start_time_).seconds();
