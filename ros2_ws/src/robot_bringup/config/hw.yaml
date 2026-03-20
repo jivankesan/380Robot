@@ -10,7 +10,7 @@ serial_bridge_node:
     wheel_radius_m: 0.048
 
     # PWM limits
-    max_pwm: 150
+    max_pwm: 100
 
     # Command rate (Hz)
     cmd_rate_hz: 50.0
