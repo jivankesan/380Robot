@@ -113,10 +113,10 @@ private:
     double domega = std::clamp(raw_omega_ - omega_cmd_, -domega_max, domega_max);
     omega_cmd_ += domega;
 
-    // If raw velocity is zero (stopped), snap both v and omega to zero immediately
+    // If raw velocity is zero, snap linear immediately.
+    // Do NOT zero omega — a pure spin (lin=0, ang≠0) must still pass through.
     if (raw_v_ <= 0.0) {
       v_cmd_ = 0.0;
-      omega_cmd_ = 0.0;
     }
 
     // Publish limited command
