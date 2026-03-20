@@ -10,7 +10,7 @@ serial_bridge_node:
     wheel_radius_m: 0.048
 
     # PWM limits
-    max_pwm: 100
+    max_pwm: 255
 
     # Command rate (Hz)
     cmd_rate_hz: 50.0
@@ -33,4 +33,4 @@ serial_bridge_node:
 
     # Minimum PWM to guarantee both wheels overcome static friction / deadband.
     # Raise if the inner wheel stalls during turns. Typical range: 50-80.
-    min_pwm: 20
+    min_pwm: 30
