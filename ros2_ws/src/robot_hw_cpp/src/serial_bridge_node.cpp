@@ -333,11 +333,7 @@ private:
         RCLCPP_WARN(this->get_logger(), "Failed to parse telemetry: %s", line.c_str());
       }
     } else if (parts[0] == "E" && parts.size() >= 3) {
-      // Error: E,<code>,<msg>
-      status.battery_v = 0.0;
-      status.estop = true;
-      status.last_error = parts[2];
-      status_pub_->publish(status);
+      // Error: E,<code>,<msg> — log only, do NOT set estop; estop comes from T telemetry only
       RCLCPP_WARN(this->get_logger(), "Arduino error: %s", parts[2].c_str());
     }
   }
