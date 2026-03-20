@@ -310,6 +310,13 @@ private:
     double linear = (top_y < 0.5) ? approach_speed_ : 0.0;
     double angular = -approach_kp_angular_ * error_x;
 
+    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
+                         "APPROACH — top_y=%.3f (goal=0.5±%.2f)  cx=%.3f (goal=0.5±%.2f)  "
+                         "lin=%.3f  ang=%.3f",
+                         top_y, approach_top_tol_,
+                         target->cx, approach_center_tol_x_,
+                         linear, angular);
+
     geometry_msgs::msg::Twist cmd;
     cmd.linear.x = linear;
     cmd.angular.z = angular;
