@@ -350,19 +350,16 @@ private:
     double dwell_time = (this->now() - state_start_time_).seconds();
 
     if (!target.has_value()) {
-      detection_count_++;
-      // If the circle was last seen close to the trigger, we're right on top of
-      // it and it fell out of frame — just grab.
+      // If close enough, the circle fell out of frame — grab now.
       if (last_approach_top_y_ >= blue_trigger_top_y_ - 0.05) {
         RCLCPP_INFO(this->get_logger(),
             "Circle lost but was close (last top_y=%.2f) -- grabbing", last_approach_top_y_);
         transition_to(State::PICKUP);
         return;
       }
-      if (dwell_time > min_approach_dwell_ && detection_count_ > stability_frames_ * 2) {
-        RCLCPP_WARN(this->get_logger(), "Lost blue circle -- returning to search");
-        transition_to(State::FOLLOW_LINE_SEARCH);
-      }
+      // Otherwise keep creeping — never abandon approach for line search.
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+          "APPROACH: circle lost, continuing creep (dwell=%.1f s)", dwell_time);
       return;
     }
     detection_count_ = 0;
