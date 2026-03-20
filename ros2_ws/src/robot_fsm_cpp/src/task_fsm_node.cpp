@@ -14,6 +14,7 @@
  */
 
 #include <chrono>
+#include <optional>
 #include <string>
 
 #include "geometry_msgs/msg/twist.hpp"
