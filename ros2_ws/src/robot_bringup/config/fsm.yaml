@@ -3,14 +3,14 @@ task_fsm_node:
   ros__parameters:
     # ── Pickup target (blue circle) ──────────────────────────────────────────
     target_class: "blue_circle"
-    detection_confidence_threshold: 0.45
-    detection_stability_frames: 1
-    target_center_tolerance_x: 0.15
+    detection_confidence_threshold: 0.55
+    detection_stability_frames: 2
+    target_center_tolerance_x: 0.20
 
     # Stop and grab when the top edge of the blue circle reaches this y position
     # (0=top of frame, 1=bottom). 0.5 = middle of frame.
     # Increase to let robot get closer; decrease to stop earlier.
-    blue_trigger_top_y: 0.35
+    blue_trigger_top_y: 0.30
 
     # ── Pickup sequence timing (seconds) ────────────────────────────────────
     pickup_stop_dwell_s: 0.4    # publish zero velocity for this long
@@ -51,7 +51,7 @@ task_fsm_node:
     return_time_s: 12.0
 
     # ── Approach dwell before falling back to search ─────────────────────────
-    min_approach_dwell_s: 0.5
+    min_approach_dwell_s: 2.0
 
     # ── Init dwell (Arduino boot time) ──────────────────────────────────────
     min_init_dwell_s: 1.5

@@ -314,11 +314,23 @@ private:
     set_drive_enable(true);
     auto target = find_detection(target_class_, conf_threshold_);
     if (target.has_value()) {
-      // Phase 1: blue seen — stop line following immediately, start slow creep
-      RCLCPP_INFO(this->get_logger(),
-          "Blue circle seen (cx=%.2f top_y=%.2f) -- stopping line follow",
-          target->cx, target->cy - target->h / 2.0);
-      transition_to(State::APPROACH_TARGET);
+      // Only trigger if circle is roughly centered — ignore edge detections
+      bool centered = std::abs(target->cx - 0.5) < center_tol_x_;
+      if (!centered) {
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+            "Blue circle ignored (cx=%.2f too far off-center)", target->cx);
+        detection_count_ = 0;
+        return;
+      }
+      detection_count_++;
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 300,
+          "Blue circle seen (cx=%.2f top_y=%.2f) -- stable %d/%d",
+          target->cx, target->cy - target->h / 2.0,
+          detection_count_, stability_frames_);
+      if (detection_count_ >= stability_frames_) {
+        RCLCPP_INFO(this->get_logger(), "Blue circle locked -- stopping line follow");
+        transition_to(State::APPROACH_TARGET);
+      }
     } else {
       detection_count_ = 0;
     }
