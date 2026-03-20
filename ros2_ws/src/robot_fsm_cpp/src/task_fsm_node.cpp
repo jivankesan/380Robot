@@ -70,13 +70,11 @@ public:
     // ── Pickup target (blue circle) ──────────────────────────────────────────
     this->declare_parameter("target_class", "blue_circle");
     this->declare_parameter("detection_confidence_threshold", 0.5);
-    this->declare_parameter("detection_stability_frames", 5);
+    this->declare_parameter("detection_stability_frames", 2);
     this->declare_parameter("target_center_tolerance_x", 0.12);
-    // Stop when the blue circle bounding-box width fraction exceeds this value.
-    // w=1.0 means the circle fills the whole frame width; 0.5 = half the frame.
-    // Width is a more stable distance proxy than cy (doesn't depend on approach angle).
-    // Tune: increase = stop farther away; decrease = get closer before stopping.
-    this->declare_parameter("approach_stop_w", 0.50);
+    // Stop approach and grab when the green lego figure centroid y >= this threshold
+    // (0=top, 1=bottom). 0.80 = figure is in the bottom 20% of the frame.
+    this->declare_parameter("pickup_cy_threshold", 0.80);
 
     // ── Pickup sequence ──────────────────────────────────────────────────────
     this->declare_parameter("pickup_stop_dwell_s", 0.4);
@@ -117,7 +115,7 @@ public:
     conf_threshold_        = this->get_parameter("detection_confidence_threshold").as_double();
     stability_frames_      = this->get_parameter("detection_stability_frames").as_int();
     center_tol_x_          = this->get_parameter("target_center_tolerance_x").as_double();
-    approach_stop_w_       = this->get_parameter("approach_stop_w").as_double();
+    pickup_cy_threshold_   = this->get_parameter("pickup_cy_threshold").as_double();
 
     pickup_stop_dwell_     = this->get_parameter("pickup_stop_dwell_s").as_double();
     pickup_close_time_     = this->get_parameter("pickup_close_time_s").as_double();
@@ -251,7 +249,6 @@ private:
     drop_detection_count_ = 0;
     pickup_phase_         = -1;
     drop_phase_           = -1;
-    approach_max_w_       = 0.0;
     if (new_state == State::FAILSAFE_STOP) {
       claw_gripper(0.0);  // open gripper once on entry, not every tick
     }
@@ -331,51 +328,46 @@ private:
     }
   }
 
-  // Visual approach controller steers toward blue circle centroid.
-  // Stop when the circle is wide enough (w >= approach_stop_w_) AND centered.
-  // Width is used instead of cy because it's stable even when only a partial arc is visible.
-  // Tune approach_stop_w in fsm.yaml: increase = stop farther away, decrease = get closer.
+  // Creep forward using blue circle for steering (visual controller owns cmd_vel).
+  // Trigger pickup when the green lego figure appears in the bottom of the frame and centered.
   void handle_approach_target() {
     set_drive_enable(false);  // visual approach controller owns cmd_vel
 
+    // Primary stop condition: green lego figure low in frame and centered.
+    auto green = find_detection(drop_class_, conf_threshold_);
+    if (green.has_value()) {
+      bool centered_x = std::abs(green->cx - 0.5) < center_tol_x_;
+      bool low_enough = green->cy >= pickup_cy_threshold_;
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 250,
+          "APPROACH green: cx=%.2f cy=%.2f centered=%s low=%s",
+          green->cx, green->cy,
+          centered_x ? "YES" : "no",
+          low_enough ? "YES" : "no");
+      if (centered_x && low_enough) {
+        RCLCPP_INFO(this->get_logger(),
+            "Green figure in grab zone (cy=%.2f) -- triggering pickup", green->cy);
+        transition_to(State::PICKUP);
+        return;
+      }
+    }
+
+    // Monitor blue circle; fall back to search if we lose it for too long.
     auto target = find_detection(target_class_, conf_threshold_);
     double dwell_time = (this->now() - state_start_time_).seconds();
 
     if (!target.has_value()) {
       detection_count_++;
-      // If we previously had a large w (were close) and now lost the target,
-      // the robot overshot — trigger pickup rather than returning to search.
-      if (approach_max_w_ >= approach_stop_w_) {
-        RCLCPP_INFO(this->get_logger(),
-            "Pickup triggered (overshot: detection lost after max_w=%.2f)", approach_max_w_);
-        transition_to(State::PICKUP);
-        return;
-      }
       if (dwell_time > min_approach_dwell_ && detection_count_ > stability_frames_ * 2) {
-        RCLCPP_WARN(this->get_logger(), "Lost blue circle — returning to search");
+        RCLCPP_WARN(this->get_logger(), "Lost blue circle -- returning to search");
         transition_to(State::FOLLOW_LINE_SEARCH);
       }
       return;
     }
     detection_count_ = 0;
 
-    // Track the widest (closest) detection seen.
-    approach_max_w_ = std::max(approach_max_w_, static_cast<double>(target->w));
-
-    bool centered_x   = std::abs(target->cx - 0.5) < center_tol_x_;
-    bool close_enough = target->w >= approach_stop_w_;
-
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 250,
-        "APPROACH cx=%.2f cy=%.2f w=%.2f max_w=%.2f centered=%s close=%s",
-        target->cx, target->cy, target->w, approach_max_w_,
-        centered_x ? "YES" : "no",
-        close_enough ? "YES" : "no");
-
-    if (centered_x && close_enough) {
-      RCLCPP_INFO(this->get_logger(),
-          "Pickup triggered (w=%.2f max_w=%.2f)", target->w, approach_max_w_);
-      transition_to(State::PICKUP);
-    }
+        "APPROACH blue: cx=%.2f cy=%.2f w=%.2f",
+        target->cx, target->cy, target->w);
   }
 
   void handle_pickup() {
@@ -593,7 +585,7 @@ private:
   double conf_threshold_;
   int    stability_frames_;
   double center_tol_x_;
-  double approach_stop_w_;
+  double pickup_cy_threshold_;
 
   double pickup_stop_dwell_;
   double pickup_close_time_;
@@ -629,7 +621,6 @@ private:
   int                drop_detection_count_;
   int                pickup_phase_;   // -1 = not started; tracks phase within PICKUP/TURN_AROUND
   int                drop_phase_;     // -1 = not started; tracks phase within DROP
-  double             approach_max_w_;  // widest det.w seen during APPROACH_TARGET (overshoot detection)
   robot_interfaces::msg::Detections2D latest_detections_;
   bool               line_valid_;
   rclcpp::Time       last_line_valid_time_;

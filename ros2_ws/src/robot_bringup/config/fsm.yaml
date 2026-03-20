@@ -4,14 +4,12 @@ task_fsm_node:
     # ── Pickup target (blue circle) ──────────────────────────────────────────
     target_class: "blue_circle"
     detection_confidence_threshold: 0.45
-    detection_stability_frames: 4
-    target_center_tolerance_x: 0.10
+    detection_stability_frames: 2
+    target_center_tolerance_x: 0.15
 
-    # When to stop the approach and begin pickup.
-    # w is the normalized bounding-box width (0=not visible, 1=fills full frame width).
-    # Increase this value to stop farther away; decrease to get closer.
-    # At w=0.57 the robot stopped ~10cm too far. Raise toward 0.75-0.80 to get closer.
-    approach_stop_w: 0.95
+    # Trigger pickup when green lego figure cy >= this (0=top, 1=bottom).
+    # 0.80 = figure is in the bottom 20% of frame.
+    pickup_cy_threshold: 0.80
 
     # ── Pickup sequence timing (seconds) ────────────────────────────────────
     pickup_stop_dwell_s: 0.4    # publish zero velocity for this long

@@ -29,9 +29,7 @@ class VisualApproachControllerNode(Node):
         self.declare_parameter('target_class', 'blue_circle')
         self.declare_parameter('drop_class', 'green_box')
         self.declare_parameter('kp_angular', 1.8)
-        self.declare_parameter('linear_speed_mps', 0.06)
-        self.declare_parameter('linear_speed_near_mps', 0.03)  # creep speed when close
-        self.declare_parameter('near_w_threshold', 0.40)       # switch to creep above this w
+        self.declare_parameter('linear_speed_mps', 0.08)  # ~PWM 40
         self.declare_parameter('max_angular_rps', 1.2)
         self.declare_parameter('center_tolerance_x', 0.12)
         self.declare_parameter('detection_timeout_s', 0.5)
@@ -41,8 +39,6 @@ class VisualApproachControllerNode(Node):
         self.drop_class    = self.get_parameter('drop_class').value
         self.kp_angular    = self.get_parameter('kp_angular').value
         self.linear_speed  = self.get_parameter('linear_speed_mps').value
-        self.linear_near   = self.get_parameter('linear_speed_near_mps').value
-        self.near_w        = self.get_parameter('near_w_threshold').value
         self.max_angular   = self.get_parameter('max_angular_rps').value
         self.center_tol_x  = self.get_parameter('center_tolerance_x').value
         self.det_timeout   = self.get_parameter('detection_timeout_s').value
@@ -54,7 +50,6 @@ class VisualApproachControllerNode(Node):
         self._last_det_time  = None
         self._latest_cx      = 0.5
         self._latest_cy      = 0.5
-        self._latest_w       = 0.0
 
         # Subscribers
         self.det_sub = self.create_subscription(
@@ -94,7 +89,6 @@ class VisualApproachControllerNode(Node):
             if det.class_name == self._current_class:
                 self._latest_cx     = det.cx
                 self._latest_cy     = det.cy
-                self._latest_w      = det.w
                 self._last_det_time = self.get_clock().now()
                 return
 
@@ -118,12 +112,10 @@ class VisualApproachControllerNode(Node):
         cmd.angular.z = float(-self.kp_angular * error_x)
         cmd.angular.z = max(-self.max_angular, min(self.max_angular, cmd.angular.z))
 
-        # Two-speed forward: creep when close (large w) to minimise coast overshoot
-        fwd = self.linear_near if self._latest_w >= self.near_w else self.linear_speed
-        cmd.linear.x = float(fwd)
+        cmd.linear.x = float(self.linear_speed)
 
         self.get_logger().info(
-            f'[{self._current_class}] cx={self._latest_cx:.2f} w={self._latest_w:.2f} '
+            f'[{self._current_class}] cx={self._latest_cx:.2f} '
             f'err={error_x:+.2f} ang={cmd.angular.z:+.2f} fwd={cmd.linear.x:.2f}',
             throttle_duration_sec=0.3
         )
