@@ -91,6 +91,9 @@ public:
     // Stop publishing cmd_vel if circle unseen for this long (seconds)
     this->declare_parameter("approach_align_gate_x", 0.15);
     this->declare_parameter("approach_detection_timeout_s", 0.5);
+    // Minimum circle height (normalised) before pickup is allowed.
+    // Prevents stopping when the circle is still far away.
+    this->declare_parameter("approach_min_circle_h", 0.40);
 
     // Get parameters
     target_class_ = this->get_parameter("target_class").as_string();
@@ -112,6 +115,7 @@ public:
     approach_center_tol_x_ = this->get_parameter("approach_center_tolerance_x").as_double();
     approach_align_gate_x_ = this->get_parameter("approach_align_gate_x").as_double();
     approach_det_timeout_ = this->get_parameter("approach_detection_timeout_s").as_double();
+    approach_min_circle_h_ = this->get_parameter("approach_min_circle_h").as_double();
 
     // Initialize state
     current_state_ = State::INIT;
@@ -306,16 +310,16 @@ private:
     double top_y = target->cy - target->h / 2.0;
     double error_x = target->cx - 0.5;  // positive = circle right of centre
 
+    bool circle_close_enough = target->h >= approach_min_circle_h_;
     bool vertically_close = std::abs(top_y - 0.5) < approach_top_tol_;
     bool horizontally_centred = std::abs(error_x) < approach_center_tol_x_;
-    // If we overshot (top of circle is below midframe), go to pickup immediately
-    // regardless of horizontal position — we're already over it.
-    bool overshot = top_y > (0.5 + approach_top_tol_);
+    // If we overshot (top of circle is below midframe), go to pickup immediately.
+    bool overshot = circle_close_enough && top_y > (0.5 + approach_top_tol_);
 
-    if (overshot || (vertically_close && horizontally_centred)) {
+    if (overshot || (circle_close_enough && vertically_close && horizontally_centred)) {
       RCLCPP_INFO(this->get_logger(),
-                  "Approach complete (top_y=%.2f cx=%.2f%s) — picking up",
-                  top_y, target->cx, overshot ? " OVERSHOT" : "");
+                  "Approach complete (top_y=%.2f cx=%.2f h=%.2f%s) — picking up",
+                  top_y, target->cx, target->h, overshot ? " OVERSHOT" : "");
       publish_zero_cmd();
       transition_to(State::PICKUP);
       return;
@@ -329,10 +333,10 @@ private:
     double angular = -approach_kp_angular_ * error_x;
 
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
-                         "APPROACH — top_y=%.3f (goal=0.5±%.2f)  cx=%.3f (goal=0.5±%.2f)  "
+                         "APPROACH — top_y=%.3f (goal=0.5±%.2f)  cx=%.3f  h=%.2f (min=%.2f)  "
                          "lin=%.3f  ang=%.3f",
                          top_y, approach_top_tol_,
-                         target->cx, approach_center_tol_x_,
+                         target->cx, target->h, approach_min_circle_h_,
                          linear, angular);
 
     geometry_msgs::msg::Twist cmd;
@@ -459,6 +463,7 @@ private:
   double approach_center_tol_x_;
   double approach_align_gate_x_;
   double approach_det_timeout_;
+  double approach_min_circle_h_;
 
   // State
   State current_state_;

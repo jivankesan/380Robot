@@ -7,7 +7,7 @@ task_fsm_node:
 
     # Approach behaviour (APPROACH_TARGET state)
     # Linear speed while driving toward the circle
-    approach_linear_speed_mps: 0.10
+    approach_linear_speed_mps: 0.35
     # P gain: angular = -kp * (cx - 0.5)
     approach_kp_angular: 2.5
     # |top_y - 0.5| < this  (top_y = cy - h/2, normalised)
@@ -19,6 +19,8 @@ task_fsm_node:
     approach_align_gate_x: 0.15
     # Publish zero cmd_vel if circle unseen for longer than this
     approach_detection_timeout_s: 0.5
+    # Circle must fill at least this fraction of frame height before pickup triggers
+    approach_min_circle_h: 0.40
 
     # Pickup timing (seconds)
     pickup_close_time_s: 1.0
@@ -39,7 +41,7 @@ task_fsm_node:
 
     # Set false to skip line following entirely (circle-only test mode).
     # Robot will sit still until the blue circle is detected, then approach.
-    require_line_follow: false
+    require_line_follow: true
 
     # Line loss handling
     line_loss_timeout_s: 0.5
