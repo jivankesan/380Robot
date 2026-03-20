@@ -63,3 +63,17 @@ object_detector_node:
 
     # Rate limiting
     detection_rate_hz: 10.0
+
+blue_circle_controller_node:
+  ros__parameters:
+    target_class: "blue_circle"
+    drop_class: "green_box"
+    kp_angular: 1.0
+    # Normal approach speed; drops to near speed when w >= near_w_threshold
+    linear_speed_mps: 0.10
+    linear_speed_near_mps: 0.12
+    near_w_threshold: 0.70
+    max_angular_rps: 0.7
+    center_tolerance_x: 0.10
+    detection_timeout_s: 0.5
+    rate_hz: 20.0
