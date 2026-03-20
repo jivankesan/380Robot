@@ -72,9 +72,8 @@ public:
     this->declare_parameter("detection_confidence_threshold", 0.5);
     this->declare_parameter("detection_stability_frames", 2);
     this->declare_parameter("target_center_tolerance_x", 0.12);
-    // Stop approach and grab when the green lego figure centroid y >= this threshold
-    // (0=top, 1=bottom). 0.80 = figure is in the bottom 20% of the frame.
-    this->declare_parameter("pickup_cy_threshold", 0.80);
+    // Creep forward for this many seconds after seeing blue, then grab.
+    this->declare_parameter("approach_time_s", 0.5);
 
     // ── Pickup sequence ──────────────────────────────────────────────────────
     this->declare_parameter("pickup_stop_dwell_s", 0.4);
@@ -115,7 +114,7 @@ public:
     conf_threshold_        = this->get_parameter("detection_confidence_threshold").as_double();
     stability_frames_      = this->get_parameter("detection_stability_frames").as_int();
     center_tol_x_          = this->get_parameter("target_center_tolerance_x").as_double();
-    pickup_cy_threshold_   = this->get_parameter("pickup_cy_threshold").as_double();
+    approach_time_         = this->get_parameter("approach_time_s").as_double();
 
     pickup_stop_dwell_     = this->get_parameter("pickup_stop_dwell_s").as_double();
     pickup_close_time_     = this->get_parameter("pickup_close_time_s").as_double();
@@ -328,46 +327,19 @@ private:
     }
   }
 
-  // Creep forward using blue circle for steering (visual controller owns cmd_vel).
-  // Trigger pickup when the green lego figure appears in the bottom of the frame and centered.
+  // Creep forward for approach_time_s steered by blue circle, then grab.
   void handle_approach_target() {
     set_drive_enable(false);  // visual approach controller owns cmd_vel
 
-    // Primary stop condition: green lego figure low in frame and centered.
-    auto green = find_detection(drop_class_, conf_threshold_);
-    if (green.has_value()) {
-      bool centered_x = std::abs(green->cx - 0.5) < center_tol_x_;
-      bool low_enough = green->cy >= pickup_cy_threshold_;
-      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 250,
-          "APPROACH green: cx=%.2f cy=%.2f centered=%s low=%s",
-          green->cx, green->cy,
-          centered_x ? "YES" : "no",
-          low_enough ? "YES" : "no");
-      if (centered_x && low_enough) {
-        RCLCPP_INFO(this->get_logger(),
-            "Green figure in grab zone (cy=%.2f) -- triggering pickup", green->cy);
-        transition_to(State::PICKUP);
-        return;
-      }
-    }
-
-    // Monitor blue circle; fall back to search if we lose it for too long.
-    auto target = find_detection(target_class_, conf_threshold_);
-    double dwell_time = (this->now() - state_start_time_).seconds();
-
-    if (!target.has_value()) {
-      detection_count_++;
-      if (dwell_time > min_approach_dwell_ && detection_count_ > stability_frames_ * 2) {
-        RCLCPP_WARN(this->get_logger(), "Lost blue circle -- returning to search");
-        transition_to(State::FOLLOW_LINE_SEARCH);
-      }
-      return;
-    }
-    detection_count_ = 0;
+    double t = (this->now() - state_start_time_).seconds();
 
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 250,
-        "APPROACH blue: cx=%.2f cy=%.2f w=%.2f",
-        target->cx, target->cy, target->w);
+        "APPROACH: creeping %.2f / %.2f s", t, approach_time_);
+
+    if (t >= approach_time_) {
+      RCLCPP_INFO(this->get_logger(), "Approach time reached -- triggering pickup");
+      transition_to(State::PICKUP);
+    }
   }
 
   void handle_pickup() {
@@ -585,7 +557,7 @@ private:
   double conf_threshold_;
   int    stability_frames_;
   double center_tol_x_;
-  double pickup_cy_threshold_;
+  double approach_time_;
 
   double pickup_stop_dwell_;
   double pickup_close_time_;
