@@ -87,7 +87,7 @@ blue_circle_controller_node:
     kp_angular: 1.0
     # Normal approach speed; drops to near speed when w >= near_w_threshold
     linear_speed_mps: 0.05
-    linear_speed_near_mps: 0.03
+    linear_speed_near_mps: 0.05
     near_w_threshold: 0.40
     max_angular_rps: 0.7
     center_tolerance_x: 0.20
