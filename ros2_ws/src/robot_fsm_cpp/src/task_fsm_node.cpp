@@ -326,19 +326,9 @@ private:
     }
   }
 
-  // Creep forward for approach_time_s steered by blue circle, then grab.
+  // Not used in current flow (FOLLOW_LINE_SEARCH goes directly to PICKUP).
   void handle_approach_target() {
-    set_drive_enable(false);  // visual approach controller owns cmd_vel
-
-    double t = (this->now() - state_start_time_).seconds();
-
-    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 250,
-        "APPROACH: creeping %.2f / %.2f s", t, approach_time_);
-
-    if (t >= approach_time_) {
-      RCLCPP_INFO(this->get_logger(), "Approach time reached -- triggering pickup");
-      transition_to(State::PICKUP);
-    }
+    transition_to(State::PICKUP);
   }
 
   void handle_pickup() {
