@@ -14,6 +14,7 @@ task_fsm_node:
     # (0=top of frame, 1=bottom). 0.5 = middle of frame.
     # Increase to let robot get closer; decrease to stop earlier.
     blue_trigger_top_y: 0.42
+    approach_creep_speed_mps: 0.14
 
     # ── Pickup sequence timing (seconds) ────────────────────────────────────
     pickup_stop_dwell_s: 0.4    # publish zero velocity for this long

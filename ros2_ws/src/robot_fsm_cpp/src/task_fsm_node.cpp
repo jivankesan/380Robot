@@ -78,6 +78,8 @@ public:
     // Trigger pickup when the top edge of the blue circle bounding box reaches
     // this y position (0=top of frame, 1=bottom). 0.5 = middle of frame.
     this->declare_parameter("blue_trigger_top_y", 0.50);
+    // Creep speed during approach (m/s) — must exceed motor stall threshold.
+    this->declare_parameter("approach_creep_speed_mps", 0.14);
 
     // ── Pickup sequence ──────────────────────────────────────────────────────
     this->declare_parameter("pickup_stop_dwell_s", 0.4);
@@ -120,6 +122,7 @@ public:
     center_tol_x_          = this->get_parameter("target_center_tolerance_x").as_double();
     blue_min_w_            = this->get_parameter("blue_min_w").as_double();
     blue_trigger_top_y_    = this->get_parameter("blue_trigger_top_y").as_double();
+    approach_creep_speed_  = this->get_parameter("approach_creep_speed_mps").as_double();
 
     pickup_stop_dwell_     = this->get_parameter("pickup_stop_dwell_s").as_double();
     pickup_close_time_     = this->get_parameter("pickup_close_time_s").as_double();
@@ -341,25 +344,28 @@ private:
     }
   }
 
-  // Phase 2: creep slowly toward blue circle until top edge reaches trigger threshold.
-  // If circle disappears while we were already close, grab anyway.
+  // Phase 2: FSM creeps straight toward blue circle until top edge reaches trigger.
+  // Line controller is disabled. FSM owns cmd_vel directly.
+  // If trigger is reached, or circle fell out of frame while close — grab.
   void handle_approach_target() {
-    set_drive_enable(true);  // let blue_circle_controller cmd_vel pass through
+    set_drive_enable(false);  // disable line follow controller
 
     auto target = find_detection(target_class_, conf_threshold_);
     double dwell_time = (this->now() - state_start_time_).seconds();
 
     if (!target.has_value()) {
-      // If close enough, the circle fell out of frame — grab now.
+      // Circle fell out of frame — if we were close enough, grab now.
       if (last_approach_top_y_ >= blue_trigger_top_y_ - 0.05) {
         RCLCPP_INFO(this->get_logger(),
             "Circle lost but was close (last top_y=%.2f) -- grabbing", last_approach_top_y_);
+        publish_twist(0.0, 0.0);
         transition_to(State::PICKUP);
         return;
       }
-      // Otherwise keep creeping — never abandon approach for line search.
+      // Keep creeping straight — never abandon approach.
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-          "APPROACH: circle lost, continuing creep (dwell=%.1f s)", dwell_time);
+          "APPROACH: circle lost, creeping fwd (dwell=%.1f s)", dwell_time);
+      publish_twist(approach_creep_speed_, 0.0);
       return;
     }
     detection_count_ = 0;
@@ -373,8 +379,13 @@ private:
     if (top_y >= blue_trigger_top_y_) {
       RCLCPP_INFO(this->get_logger(),
           "Blue circle top at trigger (top_y=%.2f) -- grabbing", top_y);
+      publish_twist(0.0, 0.0);
       transition_to(State::PICKUP);
+      return;
     }
+
+    // Still approaching — creep straight forward.
+    publish_twist(approach_creep_speed_, 0.0);
   }
 
   void handle_pickup() {
@@ -594,6 +605,7 @@ private:
   double center_tol_x_;
   double blue_min_w_;
   double blue_trigger_top_y_;
+  double approach_creep_speed_;
   double last_approach_top_y_ = 0.0;
 
   double pickup_stop_dwell_;
