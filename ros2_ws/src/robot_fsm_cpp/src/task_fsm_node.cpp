@@ -206,6 +206,11 @@ private:
     if (new_state == current_state_) {
       return;
     }
+    // Give a fresh line-loss window when entering RETURN_FOLLOW_LINE so the
+    // robot has time to find the line after the pickup spin.
+    if (new_state == State::RETURN_FOLLOW_LINE) {
+      last_line_valid_time_ = this->now();
+    }
     RCLCPP_INFO(
         this->get_logger(),
         "State transition: %s -> %s",
