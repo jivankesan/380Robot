@@ -9,7 +9,7 @@ task_fsm_node:
 
     # Creep forward for this long after seeing blue circle, then close claw.
     # Increase if robot stops too far away; decrease if it overshoots.
-    approach_time_s: 1.4
+    approach_time_s: 1.5
 
     # ── Pickup sequence timing (seconds) ────────────────────────────────────
     pickup_stop_dwell_s: 0.4    # publish zero velocity for this long
