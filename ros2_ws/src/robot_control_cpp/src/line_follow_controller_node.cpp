@@ -97,10 +97,11 @@ private:
     cmd.angular.z = 0.0;
 
     if (!enabled_) {
-      // Reset derivative state so there is no spike when re-enabled
+      // Reset derivative state so there is no spike when re-enabled.
+      // Do NOT publish — the approach controller owns /control/cmd_vel
+      // during this period. Publishing zeros here would fight it.
       last_lateral_error_ = 0.0;
       last_heading_error_ = 0.0;
-      cmd_pub_->publish(cmd);
       return;
     }
 

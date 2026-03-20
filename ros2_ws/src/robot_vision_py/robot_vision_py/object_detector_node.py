@@ -139,11 +139,12 @@ class ObjectDetectorNode(Node):
         circle = self._detect_blue_circle(frame)
 
         if circle is not None:
-            cx_px, cy_px, radius = circle
+            cx_px, cy_px, radius, is_circular = circle
 
             det = Detection2D()
             det.class_name = 'blue_circle'
-            det.score = 1.0
+            # score=1.0 → confirmed circle; score=0.5 → fallback blob (partial/clipped)
+            det.score = 1.0 if is_circular else 0.5
             det.cx = float(cx_px / width)
             det.cy = float(cy_px / height)
             det.w = float(2.0 * radius / width)
@@ -158,7 +159,7 @@ class ObjectDetectorNode(Node):
                 cy_px + radius <= height - m
             )
 
-            if fully_in_frame and not self.target_locked_sent:
+            if is_circular and fully_in_frame and not self.target_locked_sent:
                 self.get_logger().info(
                     f'Full blue circle confirmed '
                     f'(cx={cx_px:.0f} cy={cy_px:.0f} r={radius:.0f}px) — locking'
@@ -170,7 +171,13 @@ class ObjectDetectorNode(Node):
 
     # ------------------------------------------------------------------
     def _detect_blue_circle(self, image: np.ndarray):
-        """Return (cx, cy, radius) of the most circular blue blob, or None."""
+        """Return (cx, cy, radius, is_circular) of the best blue blob.
+
+        Primary: most circular blob above circularity_thresh (is_circular=True).
+        Fallback: largest blue blob regardless of shape (is_circular=False),
+        used when the robot is close and the circle is partially clipped.
+        Returns None if no blob passes min_area_px.
+        """
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
         mask = cv2.inRange(
@@ -187,8 +194,10 @@ class ObjectDetectorNode(Node):
         contours, _ = cv2.findContours(
             mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        best = None
+        best_circular = None
         best_circularity = 0.0
+        best_fallback = None
+        best_fallback_area = 0.0
 
         for cnt in contours:
             area = cv2.contourArea(cnt)
@@ -200,15 +209,20 @@ class ObjectDetectorNode(Node):
                 continue
 
             circularity = 4.0 * math.pi * area / (perimeter * perimeter)
-            if circularity < self.circularity_thresh:
-                continue
 
-            if circularity > best_circularity:
-                best_circularity = circularity
-                (cx, cy), radius = cv2.minEnclosingCircle(cnt)
-                best = (cx, cy, radius)
+            if circularity >= self.circularity_thresh:
+                if circularity > best_circularity:
+                    best_circularity = circularity
+                    (cx, cy), radius = cv2.minEnclosingCircle(cnt)
+                    best_circular = (cx, cy, radius, True)
+            else:
+                # Keep as fallback candidate — largest blob wins
+                if area > best_fallback_area:
+                    best_fallback_area = area
+                    (cx, cy), radius = cv2.minEnclosingCircle(cnt)
+                    best_fallback = (cx, cy, radius, False)
 
-        return best
+        return best_circular if best_circular is not None else best_fallback
 
 
 def main(args=None):
