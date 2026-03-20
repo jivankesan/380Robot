@@ -161,6 +161,7 @@ public:
     line_valid_            = false;
     last_line_valid_time_  = this->now();
     hw_ready_              = false;
+    detector_ready_        = false;
 
     // Subscribers
     line_sub_ = this->create_subscription<robot_interfaces::msg::LineObservation>(
@@ -234,6 +235,7 @@ private:
 
   void detection_callback(const robot_interfaces::msg::Detections2D::SharedPtr msg) {
     latest_detections_ = *msg;
+    detector_ready_ = true;
   }
 
   void hw_callback(const robot_interfaces::msg::HwStatus::SharedPtr /*msg*/) {
@@ -306,6 +308,11 @@ private:
     if (wait_time < min_init_dwell_) {
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
           "INIT: waiting %.1f / %.1f s", wait_time, min_init_dwell_);
+      return;
+    }
+    if (!detector_ready_) {
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+          "INIT: waiting for object detector...");
       return;
     }
     if (line_valid_ && hw_ready_) {
@@ -646,6 +653,7 @@ private:
   bool               line_valid_;
   rclcpp::Time       last_line_valid_time_;
   bool               hw_ready_;
+  bool               detector_ready_;
 
   // ── ROS interfaces ───────────────────────────────────────────────────────
   rclcpp::Subscription<robot_interfaces::msg::LineObservation>::SharedPtr line_sub_;
