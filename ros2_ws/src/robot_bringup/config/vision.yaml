@@ -77,7 +77,7 @@ object_detector_node:
     device: "cpu"
 
     # Rate limiting
-    detection_rate_hz: 15.0
+    detection_rate_hz: 30.0
 
 blue_circle_controller_node:
   ros__parameters:

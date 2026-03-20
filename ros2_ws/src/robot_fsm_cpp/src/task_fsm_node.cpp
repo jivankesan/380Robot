@@ -314,23 +314,42 @@ private:
     set_drive_enable(true);
     auto target = find_detection(target_class_, conf_threshold_);
     if (target.has_value()) {
-      double top_y = target->cy - target->h / 2.0;
-      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 300,
-          "Blue circle: cx=%.2f top_y=%.2f (trigger>=%.2f)",
-          target->cx, top_y, blue_trigger_top_y_);
-      if (top_y >= blue_trigger_top_y_) {
-        RCLCPP_INFO(this->get_logger(),
-            "Blue circle top at %.2f -- stopping and grabbing", top_y);
-        transition_to(State::PICKUP);
-      }
+      // Phase 1: blue seen — stop line following immediately, start slow creep
+      RCLCPP_INFO(this->get_logger(),
+          "Blue circle seen (cx=%.2f top_y=%.2f) -- stopping line follow",
+          target->cx, target->cy - target->h / 2.0);
+      transition_to(State::APPROACH_TARGET);
     } else {
       detection_count_ = 0;
     }
   }
 
-  // Not used in current flow (FOLLOW_LINE_SEARCH goes directly to PICKUP).
+  // Phase 2: creep slowly toward blue circle until top edge reaches middle of frame.
   void handle_approach_target() {
-    transition_to(State::PICKUP);
+    set_drive_enable(false);  // visual controller owns cmd_vel — creeps at 0.08 m/s
+
+    auto target = find_detection(target_class_, conf_threshold_);
+    double dwell_time = (this->now() - state_start_time_).seconds();
+
+    if (!target.has_value()) {
+      detection_count_++;
+      if (dwell_time > min_approach_dwell_ && detection_count_ > stability_frames_ * 2) {
+        RCLCPP_WARN(this->get_logger(), "Lost blue circle -- returning to search");
+        transition_to(State::FOLLOW_LINE_SEARCH);
+      }
+      return;
+    }
+    detection_count_ = 0;
+
+    double top_y = target->cy - target->h / 2.0;
+    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
+        "APPROACH: top_y=%.2f (trigger>=%.2f)", top_y, blue_trigger_top_y_);
+
+    if (top_y >= blue_trigger_top_y_) {
+      RCLCPP_INFO(this->get_logger(),
+          "Blue circle top at mid-frame (top_y=%.2f) -- grabbing", top_y);
+      transition_to(State::PICKUP);
+    }
   }
 
   void handle_pickup() {
