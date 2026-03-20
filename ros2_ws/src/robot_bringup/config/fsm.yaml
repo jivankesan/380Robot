@@ -10,6 +10,7 @@ task_fsm_node:
     approach_linear_speed_mps: 0.35
     # P gain: angular = -kp * (cx - 0.5)
     approach_kp_angular: 8.0
+    approach_max_ang_vel_rps: 2.0
     # |top_y - 0.5| < this  (top_y = cy - h/2, normalised)
     approach_top_tolerance_y: 0.15
     # |cx - 0.5| < this

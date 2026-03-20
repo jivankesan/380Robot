@@ -91,6 +91,7 @@ public:
     // Stop publishing cmd_vel if circle unseen for this long (seconds)
     this->declare_parameter("approach_align_gate_x", 0.15);
     this->declare_parameter("approach_detection_timeout_s", 0.5);
+    this->declare_parameter("approach_max_ang_vel_rps", 2.0);
     // Minimum circle height (normalised) before pickup is allowed.
     // Prevents stopping when the circle is still far away.
     this->declare_parameter("approach_min_circle_h", 0.40);
@@ -115,6 +116,7 @@ public:
     approach_center_tol_x_ = this->get_parameter("approach_center_tolerance_x").as_double();
     approach_align_gate_x_ = this->get_parameter("approach_align_gate_x").as_double();
     approach_det_timeout_ = this->get_parameter("approach_detection_timeout_s").as_double();
+    approach_max_ang_vel_ = this->get_parameter("approach_max_ang_vel_rps").as_double();
     approach_min_circle_h_ = this->get_parameter("approach_min_circle_h").as_double();
 
     // Initialize state
@@ -335,7 +337,8 @@ private:
     // drifting off the frame edge as the robot approaches.
     bool aligned = std::abs(error_x) < approach_align_gate_x_;
     double linear = (aligned && top_y < 0.5) ? approach_speed_ : 0.0;
-    double angular = -approach_kp_angular_ * error_x;
+    double angular = std::clamp(
+        -approach_kp_angular_ * error_x, -approach_max_ang_vel_, approach_max_ang_vel_);
 
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
                          "APPROACH — top_y=%.3f (goal=0.5±%.2f)  cx=%.3f  h=%.2f (min=%.2f)  "
@@ -468,6 +471,7 @@ private:
   double approach_center_tol_x_;
   double approach_align_gate_x_;
   double approach_det_timeout_;
+  double approach_max_ang_vel_;
   double approach_min_circle_h_;
 
   // State
