@@ -253,6 +253,7 @@ private:
     drop_detection_count_ = 0;
     pickup_phase_         = -1;
     drop_phase_           = -1;
+    last_approach_top_y_  = 0.0;
     if (new_state == State::FAILSAFE_STOP) {
       claw_gripper(0.0);  // open gripper once on entry, not every tick
     }
@@ -340,15 +341,24 @@ private:
     }
   }
 
-  // Phase 2: creep slowly toward blue circle until top edge reaches middle of frame.
+  // Phase 2: creep slowly toward blue circle until top edge reaches trigger threshold.
+  // If circle disappears while we were already close, grab anyway.
   void handle_approach_target() {
-    set_drive_enable(false);  // visual controller owns cmd_vel — creeps at 0.08 m/s
+    set_drive_enable(false);  // visual controller owns cmd_vel
 
     auto target = find_detection(target_class_, conf_threshold_);
     double dwell_time = (this->now() - state_start_time_).seconds();
 
     if (!target.has_value()) {
       detection_count_++;
+      // If the circle was last seen close to the trigger, we're right on top of
+      // it and it fell out of frame — just grab.
+      if (last_approach_top_y_ >= blue_trigger_top_y_ - 0.12) {
+        RCLCPP_INFO(this->get_logger(),
+            "Circle lost but was close (last top_y=%.2f) -- grabbing", last_approach_top_y_);
+        transition_to(State::PICKUP);
+        return;
+      }
       if (dwell_time > min_approach_dwell_ && detection_count_ > stability_frames_ * 2) {
         RCLCPP_WARN(this->get_logger(), "Lost blue circle -- returning to search");
         transition_to(State::FOLLOW_LINE_SEARCH);
@@ -358,12 +368,14 @@ private:
     detection_count_ = 0;
 
     double top_y = target->cy - target->h / 2.0;
+    last_approach_top_y_ = top_y;
+
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200,
         "APPROACH: top_y=%.2f (trigger>=%.2f)", top_y, blue_trigger_top_y_);
 
     if (top_y >= blue_trigger_top_y_) {
       RCLCPP_INFO(this->get_logger(),
-          "Blue circle top at mid-frame (top_y=%.2f) -- grabbing", top_y);
+          "Blue circle top at trigger (top_y=%.2f) -- grabbing", top_y);
       transition_to(State::PICKUP);
     }
   }
@@ -585,6 +597,7 @@ private:
   double center_tol_x_;
   double blue_min_w_;
   double blue_trigger_top_y_;
+  double last_approach_top_y_ = 0.0;
 
   double pickup_stop_dwell_;
   double pickup_close_time_;
