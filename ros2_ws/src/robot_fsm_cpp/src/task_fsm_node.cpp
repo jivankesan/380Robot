@@ -353,7 +353,7 @@ private:
       detection_count_++;
       // If the circle was last seen close to the trigger, we're right on top of
       // it and it fell out of frame — just grab.
-      if (last_approach_top_y_ >= blue_trigger_top_y_ - 0.12) {
+      if (last_approach_top_y_ >= blue_trigger_top_y_ - 0.05) {
         RCLCPP_INFO(this->get_logger(),
             "Circle lost but was close (last top_y=%.2f) -- grabbing", last_approach_top_y_);
         transition_to(State::PICKUP);
