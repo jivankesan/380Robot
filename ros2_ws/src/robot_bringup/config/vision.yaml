@@ -38,31 +38,26 @@ line_detector_node:
 
 object_detector_node:
   ros__parameters:
-    # Detection type: "heuristic" or "yolo"
-    detector_type: "heuristic"
+    # Blue circle HSV range
+    h_min: 100
+    h_max: 130
+    s_min: 150
+    s_max: 255
+    v_min: 50
+    v_max: 255
 
-    # Target class to detect
-    target_class: "lego_person"
+    # Minimum contour area (px²) to reject noise
+    min_area_px: 500
 
-    # Confidence threshold
-    confidence_threshold: 0.5
+    # 4π·area/perimeter² — 1.0 is a perfect circle
+    circularity_threshold: 0.75
 
-    # Heuristic detector settings (for LEGO person - typically yellow/red)
-    heuristic_h_min: 15
-    heuristic_h_max: 35
-    heuristic_s_min: 100
-    heuristic_s_max: 255
-    heuristic_v_min: 100
-    heuristic_v_max: 255
-    heuristic_min_area: 200
-    heuristic_max_area: 50000
+    # Circle edge must be this many pixels inside the frame border
+    # to count as fully visible and trigger a hard stop
+    frame_margin_px: 5
 
-    # YOLO settings (if using yolo detector)
-    model_path: ""
-    device: "cpu"
-
-    # Rate limiting
-    detection_rate_hz: 10.0
+    # Detection rate
+    detection_rate_hz: 58.0
 
 blue_circle_controller_node:
   ros__parameters:

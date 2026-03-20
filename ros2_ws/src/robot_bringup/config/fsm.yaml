@@ -2,18 +2,20 @@
 task_fsm_node:
   ros__parameters:
     # Target object settings
-    target_class: "lego_person"
+    target_class: "blue_circle"
     detection_confidence_threshold: 0.5
 
-    # Detection stability (frames before transition)
-    detection_stability_frames: 15
-
-    # Target centering tolerance (normalized, 0-1 from center)
-    target_center_tolerance_x: 0.15
-    target_center_tolerance_y: 0.2
-
-    # Target size threshold for "close enough" (normalized)
-    target_size_close_threshold: 0.25
+    # Approach behaviour (APPROACH_TARGET state)
+    # Linear speed while driving toward the circle
+    approach_linear_speed_mps: 0.15
+    # P gain: angular = -kp * (cx - 0.5)
+    approach_kp_angular: 1.5
+    # |top_y - 0.5| < this  (top_y = cy - h/2, normalised)
+    approach_top_tolerance_y: 0.15
+    # |cx - 0.5| < this
+    approach_center_tolerance_x: 0.20
+    # Publish zero cmd_vel if circle unseen for longer than this
+    approach_detection_timeout_s: 0.5
 
     # Pickup timing (seconds)
     pickup_close_time_s: 1.0

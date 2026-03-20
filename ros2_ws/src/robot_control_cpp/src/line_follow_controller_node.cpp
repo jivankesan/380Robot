@@ -10,6 +10,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "robot_interfaces/msg/line_observation.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 using namespace std::chrono_literals;
 
@@ -53,8 +54,14 @@ public:
     last_heading_error_ = 0.0;
     line_valid_ = false;
     last_valid_time_ = this->now();
+    enabled_ = true;  // enabled by default; FSM sets false during APPROACH_TARGET
 
-    // Subscriber
+    // Subscribers
+    enable_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+        "/control/enable",
+        10,
+        [this](const std_msgs::msg::Bool::SharedPtr msg) { enabled_ = msg->data; });
+
     line_sub_ = this->create_subscription<robot_interfaces::msg::LineObservation>(
         "/vision/line_observation",
         10,
@@ -88,6 +95,11 @@ private:
     geometry_msgs::msg::Twist cmd;
     cmd.linear.x = 0.0;
     cmd.angular.z = 0.0;
+
+    if (!enabled_) {
+      cmd_pub_->publish(cmd);
+      return;
+    }
 
     // Check for line timeout
     double time_since_valid = (this->now() - last_valid_time_).seconds();
@@ -153,9 +165,11 @@ private:
   double last_heading_error_;
   bool line_valid_;
   rclcpp::Time last_valid_time_;
+  bool enabled_;
 
   // ROS interfaces
   rclcpp::Subscription<robot_interfaces::msg::LineObservation>::SharedPtr line_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr enable_sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
 };
