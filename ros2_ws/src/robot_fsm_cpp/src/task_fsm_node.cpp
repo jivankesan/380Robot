@@ -69,7 +69,9 @@ public:
     this->declare_parameter("target_class", "blue_circle");
     this->declare_parameter("detection_confidence_threshold", 0.5);
     this->declare_parameter("pickup_close_time_s", 1.0);
-    this->declare_parameter("pickup_hold_time_s", 0.5);
+    this->declare_parameter("pickup_rotate_time_s", 1.0);
+    this->declare_parameter("pickup_spin_time_s", 2.0);
+    this->declare_parameter("pickup_spin_omega_rps", 1.5);
     this->declare_parameter("drop_open_time_s", 1.0);
     this->declare_parameter("use_time_based_return", true);
     this->declare_parameter("return_time_s", 10.0);
@@ -94,7 +96,9 @@ public:
     target_class_ = this->get_parameter("target_class").as_string();
     conf_threshold_ = this->get_parameter("detection_confidence_threshold").as_double();
     pickup_close_time_ = this->get_parameter("pickup_close_time_s").as_double();
-    pickup_hold_time_ = this->get_parameter("pickup_hold_time_s").as_double();
+    pickup_rotate_time_ = this->get_parameter("pickup_rotate_time_s").as_double();
+    pickup_spin_time_ = this->get_parameter("pickup_spin_time_s").as_double();
+    pickup_spin_omega_ = this->get_parameter("pickup_spin_omega_rps").as_double();
     drop_open_time_ = this->get_parameter("drop_open_time_s").as_double();
     use_time_return_ = this->get_parameter("use_time_based_return").as_bool();
     return_time_ = this->get_parameter("return_time_s").as_double();
@@ -336,14 +340,36 @@ private:
   void handle_pickup() {
     publish_enable(false);
 
-    double state_time = (this->now() - state_start_time_).seconds();
+    double t = (this->now() - state_start_time_).seconds();
+    double t_rotate = pickup_close_time_;
+    double t_spin   = pickup_close_time_ + pickup_rotate_time_;
+    double t_done   = pickup_close_time_ + pickup_rotate_time_ + pickup_spin_time_;
 
     robot_interfaces::msg::ClawCommand claw_cmd;
-    claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_CLOSE;
-    claw_cmd.position = 1.0;
-    claw_pub_->publish(claw_cmd);
 
-    if (state_time > pickup_close_time_ + pickup_hold_time_) {
+    if (t < t_rotate) {
+      // Phase 1: close claw
+      claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_CLOSE;
+      claw_cmd.position = 1.0;
+      claw_pub_->publish(claw_cmd);
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+                           "PICKUP phase 1/3 — closing claw (%.1f/%.1fs)", t, t_rotate);
+    } else if (t < t_spin) {
+      // Phase 2: rotate claw
+      claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_ROTATE;
+      claw_cmd.position = 1.0;
+      claw_pub_->publish(claw_cmd);
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+                           "PICKUP phase 2/3 — rotating claw (%.1f/%.1fs)", t, t_spin);
+    } else if (t < t_done) {
+      // Phase 3: spin robot to face return direction
+      geometry_msgs::msg::Twist spin;
+      spin.angular.z = pickup_spin_omega_;
+      cmd_vel_pub_->publish(spin);
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+                           "PICKUP phase 3/3 — spinning (%.1f/%.1fs)", t, t_done);
+    } else {
+      publish_zero_cmd();
       RCLCPP_INFO(this->get_logger(), "Pickup complete, returning");
       transition_to(State::RETURN_FOLLOW_LINE);
     }
@@ -416,7 +442,7 @@ private:
   // Parameters
   std::string target_class_;
   double conf_threshold_;
-  double pickup_close_time_, pickup_hold_time_;
+  double pickup_close_time_, pickup_rotate_time_, pickup_spin_time_, pickup_spin_omega_;
   double drop_open_time_;
   bool use_time_return_;
   double return_time_;

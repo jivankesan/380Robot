@@ -45,6 +45,10 @@ public:
     this->declare_parameter("left_motor_reversed", false);
     this->declare_parameter("right_motor_reversed", false);
     this->declare_parameter("min_pwm", 60);
+    this->declare_parameter("servo1_home", 90);
+    this->declare_parameter("servo1_carry", 135);
+    this->declare_parameter("servo2_open", 70);
+    this->declare_parameter("servo2_closed", 150);
 
     // Get parameters
     serial_port_ = this->get_parameter("serial_port").as_string();
@@ -60,6 +64,10 @@ public:
     left_reversed_ = this->get_parameter("left_motor_reversed").as_bool();
     right_reversed_ = this->get_parameter("right_motor_reversed").as_bool();
     min_pwm_ = this->get_parameter("min_pwm").as_int();
+    servo1_home_ = this->get_parameter("servo1_home").as_int();
+    servo1_carry_ = this->get_parameter("servo1_carry").as_int();
+    servo2_open_ = this->get_parameter("servo2_open").as_int();
+    servo2_closed_ = this->get_parameter("servo2_closed").as_int();
 
     // Initialize state
     target_v_ = 0.0;
@@ -73,6 +81,9 @@ public:
       RCLCPP_ERROR(this->get_logger(), "Failed to open serial port: %s", serial_port_.c_str());
     } else {
       RCLCPP_INFO(this->get_logger(), "Serial port opened: %s", serial_port_.c_str());
+      // Reset claw to open/home on startup (matches test_pickup.py reset sequence)
+      send_servo(2, servo2_open_);
+      send_servo(1, servo1_home_);
     }
 
     // Subscribers
@@ -252,20 +263,39 @@ private:
     }
   }
 
-  void send_claw_command(uint8_t mode, float position) {
+  void send_servo(int servo_num, int angle) {
     if (serial_fd_ < 0) {
       return;
     }
-
-    int pos_scaled = static_cast<int>(position * 1000);
     std::stringstream ss;
-    ss << "C," << static_cast<int>(mode) << "," << pos_scaled << "\n";
+    ss << "C," << servo_num << "," << angle << "\n";
     std::string cmd = ss.str();
-
     ssize_t written = write(serial_fd_, cmd.c_str(), cmd.length());
     if (written < 0) {
       RCLCPP_WARN_THROTTLE(
           this->get_logger(), *this->get_clock(), 1000, "Serial write failed");
+    }
+  }
+
+  void send_claw_command(uint8_t mode, float /*position*/) {
+    // MODE_OPEN  (0): open gripper + home rotation
+    // MODE_CLOSE (1): close gripper (rotation stays at home)
+    // MODE_HOLD  (2): no-op — hold current position
+    // MODE_ROTATE(3): rotate arm to carry position (gripper stays closed)
+    switch (mode) {
+      case robot_interfaces::msg::ClawCommand::MODE_OPEN:
+        send_servo(2, servo2_open_);
+        send_servo(1, servo1_home_);
+        break;
+      case robot_interfaces::msg::ClawCommand::MODE_CLOSE:
+        send_servo(2, servo2_closed_);
+        break;
+      case robot_interfaces::msg::ClawCommand::MODE_ROTATE:
+        send_servo(1, servo1_carry_);
+        break;
+      case robot_interfaces::msg::ClawCommand::MODE_HOLD:
+      default:
+        break;
     }
   }
 
@@ -350,6 +380,8 @@ private:
   double left_gain_, right_gain_;
   bool left_reversed_, right_reversed_;
   int min_pwm_;
+  int servo1_home_, servo1_carry_;
+  int servo2_open_, servo2_closed_;
 
   // Serial state
   int serial_fd_;
