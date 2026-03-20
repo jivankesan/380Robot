@@ -72,9 +72,10 @@ public:
     this->declare_parameter("detection_confidence_threshold", 0.5);
     this->declare_parameter("detection_stability_frames", 2);
     this->declare_parameter("target_center_tolerance_x", 0.12);
-    // Trigger pickup when blue circle fills this fraction of frame width.
-    // Larger = robot must be closer before grabbing. Tune in fsm.yaml (no rebuild).
-    this->declare_parameter("blue_trigger_w", 0.50);
+    // Trigger pickup when the top edge of the blue circle bounding box reaches
+    // this y position (0=top of frame, 1=bottom). 0.5 = middle of frame.
+    // Increase to let robot get closer before grabbing; decrease to stop earlier.
+    this->declare_parameter("blue_trigger_top_y", 0.50);
 
     // ── Pickup sequence ──────────────────────────────────────────────────────
     this->declare_parameter("pickup_stop_dwell_s", 0.4);
@@ -115,7 +116,7 @@ public:
     conf_threshold_        = this->get_parameter("detection_confidence_threshold").as_double();
     stability_frames_      = this->get_parameter("detection_stability_frames").as_int();
     center_tol_x_          = this->get_parameter("target_center_tolerance_x").as_double();
-    blue_trigger_w_        = this->get_parameter("blue_trigger_w").as_double();
+    blue_trigger_top_y_    = this->get_parameter("blue_trigger_top_y").as_double();
 
     pickup_stop_dwell_     = this->get_parameter("pickup_stop_dwell_s").as_double();
     pickup_close_time_     = this->get_parameter("pickup_close_time_s").as_double();
@@ -313,12 +314,13 @@ private:
     set_drive_enable(true);
     auto target = find_detection(target_class_, conf_threshold_);
     if (target.has_value()) {
+      double top_y = target->cy - target->h / 2.0;
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 300,
-          "Blue circle: cx=%.2f w=%.2f (trigger>=%.2f)",
-          target->cx, target->w, blue_trigger_w_);
-      if (target->w >= blue_trigger_w_) {
+          "Blue circle: cx=%.2f top_y=%.2f (trigger>=%.2f)",
+          target->cx, top_y, blue_trigger_top_y_);
+      if (top_y >= blue_trigger_top_y_) {
         RCLCPP_INFO(this->get_logger(),
-            "Blue circle close enough (w=%.2f) -- stopping and grabbing", target->w);
+            "Blue circle top at %.2f -- stopping and grabbing", top_y);
         transition_to(State::PICKUP);
       }
     } else {
@@ -546,7 +548,7 @@ private:
   double conf_threshold_;
   int    stability_frames_;
   double center_tol_x_;
-  double blue_trigger_w_;
+  double blue_trigger_top_y_;
 
   double pickup_stop_dwell_;
   double pickup_close_time_;
