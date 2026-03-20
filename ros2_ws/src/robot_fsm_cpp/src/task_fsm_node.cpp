@@ -13,6 +13,7 @@
  * - FAILSAFE_STOP: Error state
  */
 
+#include <algorithm>
 #include <chrono>
 #include <optional>
 #include <string>
