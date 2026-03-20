@@ -58,8 +58,10 @@ object_detector_node:
     # to count as fully visible and trigger a hard stop
     frame_margin_px: 5
 
-    # Detection rate
-    detection_rate_hz: 30.0
+    # Search rate (line following phase)
+    detection_rate_hz: 15.0
+    # Approach rate (once target is locked and FSM is in APPROACH_TARGET)
+    approach_rate_hz: 60.0
 
 blue_circle_controller_node:
   ros__parameters:

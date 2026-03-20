@@ -46,6 +46,7 @@ class ObjectDetectorNode(Node):
         # to count as "fully visible"
         self.declare_parameter('frame_margin_px', 5)
         self.declare_parameter('detection_rate_hz', 15.0)
+        self.declare_parameter('approach_rate_hz', 60.0)
 
         self.h_min = self.get_parameter('h_min').value
         self.h_max = self.get_parameter('h_max').value
@@ -57,6 +58,7 @@ class ObjectDetectorNode(Node):
         self.circularity_thresh = self.get_parameter('circularity_threshold').value
         self.frame_margin = self.get_parameter('frame_margin_px').value
         detection_rate = self.get_parameter('detection_rate_hz').value
+        approach_rate = self.get_parameter('approach_rate_hz').value
 
         self.bridge = CvBridge()
 
@@ -84,7 +86,9 @@ class ObjectDetectorNode(Node):
             String, '/control/fsm_state', self._fsm_state_cb, 10)
 
         self.last_proc_time = self.get_clock().now()
-        self.detection_period = 1.0 / detection_rate
+        self.search_period = 1.0 / detection_rate
+        self.approach_period = 1.0 / approach_rate
+        self.detection_period = self.search_period
 
         self.get_logger().info(
             f'Blue circle detector ready '
@@ -94,15 +98,21 @@ class ObjectDetectorNode(Node):
 
     # ------------------------------------------------------------------
     def _fsm_state_cb(self, msg: String) -> None:
-        if msg.data == 'PICKUP' and not self.target_acquired:
+        if msg.data == 'APPROACH_TARGET':
+            if self.detection_period != self.approach_period:
+                self.detection_period = self.approach_period
+                self.get_logger().info('Detection rate -> 60 Hz (approach)')
+        elif msg.data == 'PICKUP' and not self.target_acquired:
             # Approach is done — go dormant while claw closes
             self.target_acquired = True
+            self.detection_period = self.search_period
             self.get_logger().info('Detection dormant during pickup')
         elif msg.data == 'RETURN_FOLLOW_LINE' and self.target_acquired:
-            # Back on the line — resume detecting and allow target_locked again
+            # Back on the line — resume at search rate, allow target_locked again
             self.target_acquired = False
             self.target_locked_sent = False
-            self.get_logger().info('Detection re-enabled for return leg')
+            self.detection_period = self.search_period
+            self.get_logger().info('Detection re-enabled for return leg (15 Hz)')
 
     # ------------------------------------------------------------------
     def image_callback(self, msg: Image) -> None:
