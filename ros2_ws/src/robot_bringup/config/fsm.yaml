@@ -10,7 +10,7 @@ task_fsm_node:
     # Stop and grab when the top edge of the blue circle reaches this y position
     # (0=top of frame, 1=bottom). 0.5 = middle of frame.
     # Increase to let robot get closer; decrease to stop earlier.
-    blue_trigger_top_y: 0.30
+    blue_trigger_top_y: 0.45
 
     # ── Pickup sequence timing (seconds) ────────────────────────────────────
     pickup_stop_dwell_s: 0.4    # publish zero velocity for this long
