@@ -86,8 +86,8 @@ blue_circle_controller_node:
     # Proportional gain for horizontal centering (angular_z = -kp * (cx - 0.5))
     kp_angular: 1.0
     # Normal approach speed; drops to near speed when w >= near_w_threshold
-    linear_speed_mps: 0.08
-    linear_speed_near_mps: 0.08
+    linear_speed_mps: 0.1
+    linear_speed_near_mps: 0.1
     near_w_threshold: 0.40
     max_angular_rps: 0.7
     center_tolerance_x: 0.20
