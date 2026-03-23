@@ -1,0 +1,276 @@
+#include "fsm.h"
+#include "../config.h"
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <iostream>
+#include <string>
+#include <thread>
+
+using namespace std::chrono;
+using namespace std::chrono_literals;
+
+// ── State enum ────────────────────────────────────────────────────────────────
+
+enum class State {
+    INIT,
+    FOLLOW_LINE_SEARCH,
+    APPROACH_TARGET,
+    PICKUP,
+    SPIN_180,
+    RETURN_FOLLOW_LINE,
+    DROP,
+    DONE,
+    FAILSAFE_STOP
+};
+
+static std::string to_str(State s) {
+    switch (s) {
+        case State::INIT:               return "INIT";
+        case State::FOLLOW_LINE_SEARCH: return "FOLLOW_LINE_SEARCH";
+        case State::APPROACH_TARGET:    return "APPROACH_TARGET";
+        case State::PICKUP:             return "PICKUP";
+        case State::SPIN_180:           return "SPIN_180";
+        case State::RETURN_FOLLOW_LINE: return "RETURN_FOLLOW_LINE";
+        case State::DROP:               return "DROP";
+        case State::DONE:               return "DONE";
+        case State::FAILSAFE_STOP:      return "FAILSAFE_STOP";
+        default:                        return "UNKNOWN";
+    }
+}
+
+// ── FSM context (local to this function) ──────────────────────────────────────
+
+struct FsmCtx {
+    State     current  = State::INIT;
+    TimePoint state_start = Clock::now();
+
+    // Cached copies read from SharedState each tick
+    LineObs   line;
+    Detection det;
+    bool      target_locked = false;
+    bool      hw_ready      = false;
+    bool      estop         = false;
+    TimePoint last_line_valid_time    = Clock::now();
+    TimePoint last_detection_time     = Clock::now();
+
+    void transition(State next) {
+        if (next == current) return;
+        std::cout << "[fsm] " << to_str(current) << " -> " << to_str(next) << "\n";
+        // Give a fresh line-loss window after spin (time to reacquire line)
+        if (next == State::RETURN_FOLLOW_LINE || next == State::SPIN_180) {
+            last_line_valid_time = Clock::now();
+        }
+        current     = next;
+        state_start = Clock::now();
+    }
+
+    double state_elapsed() const {
+        return duration_cast<duration<double>>(Clock::now() - state_start).count();
+    }
+};
+
+// ── Helpers that write to SharedState ─────────────────────────────────────────
+
+static void set_line_follow(SharedState& s) {
+    std::lock_guard<std::mutex> lk(s.mtx);
+    s.control_mode = ControlMode::LINE_FOLLOW;
+}
+
+static void set_manual(SharedState& s, double v, double omega) {
+    std::lock_guard<std::mutex> lk(s.mtx);
+    s.control_mode     = ControlMode::MANUAL;
+    s.manual_cmd_v     = v;
+    s.manual_cmd_omega = omega;
+}
+
+static void stop(SharedState& s) {
+    set_manual(s, 0.0, 0.0);
+}
+
+static void send_claw(SharedState& s, ClawMode mode) {
+    std::lock_guard<std::mutex> lk(s.mtx);
+    s.claw_mode        = mode;
+    s.claw_cmd_pending = true;
+}
+
+// ── State handlers ────────────────────────────────────────────────────────────
+
+static void handle_init(FsmCtx& ctx, SharedState& state) {
+    stop(state);
+    bool line_ok = ctx.line.valid;
+    if ((line_ok && ctx.hw_ready) || ctx.state_elapsed() > 10.0) {
+        std::cout << "[fsm] systems ready, starting mission\n";
+        ctx.transition(State::FOLLOW_LINE_SEARCH);
+    }
+}
+
+static void handle_follow_line_search(FsmCtx& ctx, SharedState& state) {
+    set_line_follow(state);
+    // Transition to APPROACH_TARGET happens when target_locked fires
+    if (ctx.target_locked) {
+        std::cout << "[fsm] full blue circle confirmed – entering approach\n";
+        ctx.transition(State::APPROACH_TARGET);
+    }
+}
+
+static void handle_approach_target(FsmCtx& ctx, SharedState& state) {
+    // Suppress line follower; FSM drives manually
+    const Detection& d = ctx.det;
+
+    if (!d.valid) {
+        double lost_for = duration_cast<duration<double>>(
+            Clock::now() - ctx.last_detection_time).count();
+        if (lost_for > APPROACH_DET_TIMEOUT_S) {
+            stop(state);
+        }
+        return;
+    }
+
+    double top_y   = d.cy - d.h / 2.0;
+    double error_x = d.cx - 0.5;
+
+    bool circle_close_enough = d.h >= APPROACH_MIN_CIRCLE_H;
+    bool vertically_close    = std::abs(top_y - 0.5) < APPROACH_TOP_TOL;
+    bool horizontally_ok     = std::abs(error_x) < APPROACH_CENTER_TOL_X;
+    bool overshot            = top_y > (0.5 + APPROACH_TOP_TOL);
+
+    if (overshot || (circle_close_enough && vertically_close && horizontally_ok)) {
+        std::cout << "[fsm] approach complete (top_y=" << top_y
+                  << " h=" << d.h << ") – picking up\n";
+        stop(state);
+        ctx.transition(State::PICKUP);
+        return;
+    }
+
+    bool aligned = std::abs(error_x) < APPROACH_ALIGN_GATE_X;
+    double linear  = (aligned && top_y < 0.5) ? APPROACH_SPEED_MPS : 0.0;
+    double angular = std::clamp(-APPROACH_KP_ANGULAR * error_x,
+                                -APPROACH_MAX_ANG_VEL, APPROACH_MAX_ANG_VEL);
+    set_manual(state, linear, angular);
+}
+
+static void handle_pickup(FsmCtx& ctx, SharedState& state) {
+    stop(state);
+    double t        = ctx.state_elapsed();
+    double t_rotate = PICKUP_CLOSE_TIME_S;
+    double t_done   = PICKUP_CLOSE_TIME_S + PICKUP_ROTATE_TIME_S;
+
+    if (t < t_rotate) {
+        send_claw(state, ClawMode::CLOSE);
+    } else if (t < t_done) {
+        send_claw(state, ClawMode::ROTATE);
+    } else {
+        std::cout << "[fsm] claw secured – spinning 180\n";
+        ctx.transition(State::SPIN_180);
+    }
+}
+
+static void handle_spin180(FsmCtx& ctx, SharedState& state) {
+    if (ctx.state_elapsed() < PICKUP_SPIN_TIME_S) {
+        set_manual(state, 0.0, PICKUP_SPIN_OMEGA_RPS);
+    } else {
+        stop(state);
+        std::cout << "[fsm] spin complete – returning to line\n";
+        ctx.transition(State::RETURN_FOLLOW_LINE);
+    }
+}
+
+static void handle_return_follow_line(FsmCtx& ctx, SharedState& state) {
+    set_line_follow(state);
+    send_claw(state, ClawMode::HOLD);
+    if (ctx.state_elapsed() > RETURN_TIME_S) {
+        std::cout << "[fsm] return time elapsed – dropping\n";
+        ctx.transition(State::DROP);
+    }
+}
+
+static void handle_drop(FsmCtx& ctx, SharedState& state) {
+    stop(state);
+    send_claw(state, ClawMode::OPEN);
+    if (ctx.state_elapsed() > DROP_OPEN_TIME_S) {
+        std::cout << "[fsm] mission complete!\n";
+        ctx.transition(State::DONE);
+    }
+}
+
+static void handle_done(FsmCtx& /*ctx*/, SharedState& state) {
+    stop(state);
+}
+
+static void handle_failsafe(FsmCtx& /*ctx*/, SharedState& state) {
+    stop(state);
+    send_claw(state, ClawMode::OPEN);
+}
+
+// ── Main thread function ───────────────────────────────────────────────────────
+
+void fsm_thread(SharedState& state) {
+    const double dt = 1.0 / FSM_RATE_HZ;
+    const auto period = duration_cast<nanoseconds>(duration<double>(dt));
+    auto next_tick = Clock::now() + period;
+
+    FsmCtx ctx;
+
+    while (!state.shutdown.load()) {
+        std::this_thread::sleep_until(next_tick);
+        next_tick += period;
+
+        // ── Read shared state ────────────────────────────────────────────────
+        bool target_locked_snapshot;
+        {
+            std::lock_guard<std::mutex> lk(state.mtx);
+            ctx.line          = state.line_obs;
+            ctx.det           = state.detection;
+            ctx.hw_ready      = state.hw_ready;
+            ctx.estop         = state.estop;
+            target_locked_snapshot = state.target_locked;
+            // Consume target_locked (one-shot)
+            if (state.target_locked) state.target_locked = false;
+        }
+
+        // Update cached times
+        if (ctx.line.valid)  ctx.last_line_valid_time  = Clock::now();
+        if (ctx.det.valid)   ctx.last_detection_time   = Clock::now();
+        ctx.target_locked = target_locked_snapshot;
+
+        // Update FSM state string for logging
+        {
+            std::lock_guard<std::mutex> lk(state.mtx);
+            state.fsm_state = to_str(ctx.current);
+        }
+
+        // ── Global failsafe checks ───────────────────────────────────────────
+        if (ctx.estop && ctx.current != State::FAILSAFE_STOP) {
+            ctx.transition(State::FAILSAFE_STOP);
+        }
+
+        // Line loss check (same states as ROS2 version)
+        bool check_line = (ctx.current == State::FOLLOW_LINE_SEARCH ||
+                           ctx.current == State::RETURN_FOLLOW_LINE);
+        if (check_line) {
+            double line_loss = duration_cast<duration<double>>(
+                Clock::now() - ctx.last_line_valid_time).count();
+            if (line_loss > LINE_LOSS_TIMEOUT_S) {
+                std::cerr << "[fsm] line lost too long – failsafe\n";
+                ctx.transition(State::FAILSAFE_STOP);
+            }
+        }
+
+        // ── Dispatch ────────────────────────────────────────────────────────
+        switch (ctx.current) {
+            case State::INIT:               handle_init(ctx, state);               break;
+            case State::FOLLOW_LINE_SEARCH: handle_follow_line_search(ctx, state); break;
+            case State::APPROACH_TARGET:    handle_approach_target(ctx, state);    break;
+            case State::PICKUP:             handle_pickup(ctx, state);             break;
+            case State::SPIN_180:           handle_spin180(ctx, state);            break;
+            case State::RETURN_FOLLOW_LINE: handle_return_follow_line(ctx, state); break;
+            case State::DROP:               handle_drop(ctx, state);               break;
+            case State::DONE:               handle_done(ctx, state);               break;
+            case State::FAILSAFE_STOP:      handle_failsafe(ctx, state);           break;
+        }
+    }
+
+    std::cout << "[fsm] thread exited\n";
+}
