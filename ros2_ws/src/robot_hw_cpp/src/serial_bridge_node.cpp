@@ -45,6 +45,7 @@ public:
     this->declare_parameter("left_motor_reversed", false);
     this->declare_parameter("right_motor_reversed", false);
     this->declare_parameter("min_pwm", 60);
+    this->declare_parameter("spin_pwm", 150);
     this->declare_parameter("servo1_home", 90);
     this->declare_parameter("servo1_carry", 135);
     this->declare_parameter("servo2_open", 70);
@@ -64,6 +65,7 @@ public:
     left_reversed_ = this->get_parameter("left_motor_reversed").as_bool();
     right_reversed_ = this->get_parameter("right_motor_reversed").as_bool();
     min_pwm_ = this->get_parameter("min_pwm").as_int();
+    spin_pwm_ = this->get_parameter("spin_pwm").as_int();
     servo1_home_ = this->get_parameter("servo1_home").as_int();
     servo1_carry_ = this->get_parameter("servo1_carry").as_int();
     servo2_open_ = this->get_parameter("servo2_open").as_int();
@@ -75,6 +77,7 @@ public:
     last_cmd_time_ = this->now();
     claw_mode_ = 0;
     claw_position_ = 0.0;
+    spin_toggle_ = false;
 
     // Open serial port
     if (!open_serial()) {
@@ -208,6 +211,24 @@ private:
       target_v_ = 0.0;
       target_omega_ = 0.0;
     }
+
+    // Pure-spin mode: hardware cannot drive both wheels in opposite directions
+    // simultaneously, so alternate M(-spin_pwm,0) / M(0,spin_pwm) each tick.
+    if (std::abs(target_v_) < 0.01 && std::abs(target_omega_) > 0.1) {
+      int dir = (target_omega_ > 0) ? 1 : -1;  // +1 = CCW, -1 = CW
+      // Logical: CCW → left backward, right forward
+      int left_pwm  = left_reversed_  ? (dir * spin_pwm_) : (-dir * spin_pwm_);
+      int right_pwm = right_reversed_ ? (-dir * spin_pwm_) : (dir * spin_pwm_);
+
+      if (spin_toggle_) {
+        send_motor_command(left_pwm, 0);
+      } else {
+        send_motor_command(0, right_pwm);
+      }
+      spin_toggle_ = !spin_toggle_;
+      return;
+    }
+    spin_toggle_ = false;  // reset when not in pure-spin
 
     // Convert twist to wheel velocities
     double v_left = target_v_ - target_omega_ * wheel_base_ / 2.0;
@@ -380,6 +401,7 @@ private:
   double left_gain_, right_gain_;
   bool left_reversed_, right_reversed_;
   int min_pwm_;
+  int spin_pwm_;
   int servo1_home_, servo1_carry_;
   int servo2_open_, servo2_closed_;
 
@@ -393,6 +415,7 @@ private:
   rclcpp::Time last_cmd_time_;
   uint8_t claw_mode_;
   float claw_position_;
+  bool spin_toggle_;
 
   // ROS interfaces
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;

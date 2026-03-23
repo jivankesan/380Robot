@@ -41,13 +41,13 @@ object_detector_node:
     # Blue circle HSV range
     h_min: 100
     h_max: 130
-    s_min: 150
+    s_min: 180
     s_max: 255
-    v_min: 50
+    v_min: 80
     v_max: 255
 
     # Minimum contour area (px²) to reject noise
-    min_area_px: 500
+    min_area_px: 1000
 
     # 4π·area/perimeter² — 1.0 is a perfect circle.
     # Lower than 0.75 to tolerate partial circles when the robot is close
