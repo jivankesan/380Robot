@@ -214,11 +214,16 @@ private:
 
     // Pure-spin mode: hardware cannot drive both wheels in opposite directions
     // simultaneously, so alternate M(-spin_pwm,0) / M(0,spin_pwm) each tick.
+    // Scale PWM proportionally to requested omega so gentle corrections don't
+    // fire the full spin_pwm (1.5 rad/s reference = full spin_pwm).
     if (std::abs(target_v_) < 0.01 && std::abs(target_omega_) > 0.1) {
       int dir = (target_omega_ > 0) ? 1 : -1;  // +1 = CCW, -1 = CW
+      int effective_pwm = std::clamp(
+        (int)(std::abs(target_omega_) / 1.5 * spin_pwm_),
+        min_pwm_, spin_pwm_);
       // Logical: CCW → left backward, right forward
-      int left_pwm  = left_reversed_  ? (dir * spin_pwm_) : (-dir * spin_pwm_);
-      int right_pwm = right_reversed_ ? (-dir * spin_pwm_) : (dir * spin_pwm_);
+      int left_pwm  = left_reversed_  ? (dir * effective_pwm) : (-dir * effective_pwm);
+      int right_pwm = right_reversed_ ? (-dir * effective_pwm) : (dir * effective_pwm);
 
       if (spin_toggle_) {
         send_motor_command(left_pwm, 0);
