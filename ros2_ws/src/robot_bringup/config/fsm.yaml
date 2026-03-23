@@ -7,10 +7,10 @@ task_fsm_node:
 
     # Approach behaviour (APPROACH_TARGET state)
     # Linear speed while driving toward the circle
-    approach_linear_speed_mps: 0.35
+    approach_linear_speed_mps: 0.20
     # P gain: angular = -kp * (cx - 0.5)
-    approach_kp_angular: 5.0
-    approach_max_ang_vel_rps: 1.5
+    approach_kp_angular: 2.5
+    approach_max_ang_vel_rps: 0.8
     # |top_y - 0.5| < this  (top_y = cy - h/2, normalised)
     approach_top_tolerance_y: 0.15
     # |cx - 0.5| < this
