@@ -17,7 +17,7 @@ task_fsm_node:
     approach_center_tolerance_x: 0.20
     # Robot only drives forward once |cx - 0.5| is within this.
     # Keeps the circle from drifting off-frame while approaching off-axis.
-    approach_align_gate_x: 0.20
+    approach_align_gate_x: 0.10
     # Publish zero cmd_vel if circle unseen for longer than this
     approach_detection_timeout_s: 0.5
     # Circle must fill at least this fraction of frame height before pickup triggers
