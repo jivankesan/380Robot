@@ -322,7 +322,7 @@ private:
     bool vertically_close = std::abs(top_y - 0.5) < approach_top_tol_;
     bool horizontally_centred = std::abs(error_x) < approach_center_tol_x_;
     // If we overshot (top of circle is below midframe), go to pickup immediately.
-    bool overshot = circle_close_enough && top_y > (0.5 + approach_top_tol_);
+    bool overshot = top_y > (0.5 + approach_top_tol_);
 
     if (overshot || (circle_close_enough && vertically_close && horizontally_centred)) {
       RCLCPP_INFO(this->get_logger(),

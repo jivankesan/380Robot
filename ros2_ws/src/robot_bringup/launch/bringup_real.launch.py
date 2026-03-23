@@ -52,19 +52,19 @@ def generate_launch_description():
                          'frame_id': 'camera_link'}],
         ),
 
+        # Vision: Object detector (started first so circle detection is ready before line following begins)
+        Node(
+            package='robot_vision_py',
+            executable='object_detector_node',
+            name='object_detector_node',
+            parameters=[vision_config],
+        ),
+
         # Vision: Line detector
         Node(
             package='robot_vision_py',
             executable='line_detector_node',
             name='line_detector_node',
-            parameters=[vision_config],
-        ),
-
-        # Vision: Object detector
-        Node(
-            package='robot_vision_py',
-            executable='object_detector_node',
-            name='object_detector_node',
             parameters=[vision_config],
         ),
 
