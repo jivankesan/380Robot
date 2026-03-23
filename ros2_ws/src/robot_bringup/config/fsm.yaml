@@ -12,7 +12,7 @@ task_fsm_node:
     approach_kp_angular: 1.0
     approach_max_ang_vel_rps: 0.4
     # |top_y - 0.5| < this  (top_y = cy - h/2, normalised)
-    approach_top_tolerance_y: 0.15
+    approach_top_tolerance_y: 0.05
     # |cx - 0.5| < this
     approach_center_tolerance_x: 0.20
     # Robot only drives forward once |cx - 0.5| is within this.
