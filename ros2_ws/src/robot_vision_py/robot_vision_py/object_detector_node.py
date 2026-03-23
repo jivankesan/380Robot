@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
-"""Object detector node for 380Robot.
+"""Object detector node – detects a blue circle target.
 
-Detects target objects (e.g., LEGO person) in camera images
-using either heuristic color detection or YOLO.
+Publishes to /vision/detections whenever a blue circle is visible.
+When the circle is FULLY inside the frame, publishes True to
+/vision/target_locked and goes dormant until the FSM signals
+RETURN_FOLLOW_LINE (post-pickup), at which point detection resumes.
+
+Hard-stop wiring: FSM should subscribe to /vision/target_locked and
+immediately transition to PICKUP (bypassing the stability counter)
+when it receives True.
 """
+
+import math
 
 import cv2
 import numpy as np
@@ -12,197 +20,209 @@ from cv_bridge import CvBridge
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Image
+from std_msgs.msg import Bool, String
 
 from robot_interfaces.msg import Detection2D, Detections2D
 
 
 class ObjectDetectorNode(Node):
-    """ROS 2 node for object detection."""
+    """Detects a blue circle in the full camera frame."""
 
     def __init__(self):
         super().__init__('object_detector_node')
 
-        # Declare parameters
-        self.declare_parameter('detector_type', 'heuristic')
-        self.declare_parameter('target_class', 'lego_person')
-        self.declare_parameter('confidence_threshold', 0.5)
-        self.declare_parameter('heuristic_h_min', 15)
-        self.declare_parameter('heuristic_h_max', 35)
-        self.declare_parameter('heuristic_s_min', 100)
-        self.declare_parameter('heuristic_s_max', 255)
-        self.declare_parameter('heuristic_v_min', 100)
-        self.declare_parameter('heuristic_v_max', 255)
-        self.declare_parameter('heuristic_min_area', 200)
-        self.declare_parameter('heuristic_max_area', 50000)
-        self.declare_parameter('model_path', '')
-        self.declare_parameter('device', 'cpu')
-        self.declare_parameter('detection_rate_hz', 10.0)
+        # Blue HSV range (tunable via params)
+        self.declare_parameter('h_min', 100)
+        self.declare_parameter('h_max', 130)
+        self.declare_parameter('s_min', 150)
+        self.declare_parameter('s_max', 255)
+        self.declare_parameter('v_min', 50)
+        self.declare_parameter('v_max', 255)
+        # Minimum contour area in pixels to reject noise
+        self.declare_parameter('min_area_px', 500)
+        # 4π·area/perimeter² – 1.0 is a perfect circle
+        self.declare_parameter('circularity_threshold', 0.75)
+        # Pixels the circle edge must be inside the frame border
+        # to count as "fully visible"
+        self.declare_parameter('frame_margin_px', 5)
+        self.declare_parameter('detection_rate_hz', 15.0)
+        self.declare_parameter('approach_rate_hz', 60.0)
 
-        # Get parameters
-        self.detector_type = self.get_parameter('detector_type').value
-        self.target_class = self.get_parameter('target_class').value
-        self.conf_threshold = self.get_parameter('confidence_threshold').value
-        self.h_min = self.get_parameter('heuristic_h_min').value
-        self.h_max = self.get_parameter('heuristic_h_max').value
-        self.s_min = self.get_parameter('heuristic_s_min').value
-        self.s_max = self.get_parameter('heuristic_s_max').value
-        self.v_min = self.get_parameter('heuristic_v_min').value
-        self.v_max = self.get_parameter('heuristic_v_max').value
-        self.min_area = self.get_parameter('heuristic_min_area').value
-        self.max_area = self.get_parameter('heuristic_max_area').value
-        self.model_path = self.get_parameter('model_path').value
-        self.device = self.get_parameter('device').value
+        self.h_min = self.get_parameter('h_min').value
+        self.h_max = self.get_parameter('h_max').value
+        self.s_min = self.get_parameter('s_min').value
+        self.s_max = self.get_parameter('s_max').value
+        self.v_min = self.get_parameter('v_min').value
+        self.v_max = self.get_parameter('v_max').value
+        self.min_area_px = self.get_parameter('min_area_px').value
+        self.circularity_thresh = self.get_parameter('circularity_threshold').value
+        self.frame_margin = self.get_parameter('frame_margin_px').value
         detection_rate = self.get_parameter('detection_rate_hz').value
+        approach_rate = self.get_parameter('approach_rate_hz').value
 
-        # CV Bridge
         self.bridge = CvBridge()
 
-        # YOLO model (if using)
-        self.model = None
-        if self.detector_type == 'yolo' and self.model_path:
-            try:
-                from ultralytics import YOLO
-                self.model = YOLO(self.model_path)
-                self.get_logger().info(f'Loaded YOLO model from {self.model_path}')
-            except Exception as e:
-                self.get_logger().error(f'Failed to load YOLO model: {e}')
-                self.detector_type = 'heuristic'
+        # Goes dormant when FSM enters PICKUP (no point detecting while claw
+        # is closing). Resets when FSM enters RETURN_FOLLOW_LINE.
+        self.target_acquired = False
 
-        # QoS for camera
+        # One-shot flag so target_locked is only published once per approach,
+        # not on every frame after the full circle is first confirmed.
+        self.target_locked_sent = False
+
         sensor_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
 
-        # Subscriber
         self.image_sub = self.create_subscription(
-            Image,
-            '/camera/image_raw',
-            self.image_callback,
-            sensor_qos
-        )
+            Image, '/camera/image_raw', self.image_callback, sensor_qos)
 
-        # Publisher
-        self.det_pub = self.create_publisher(
-            Detections2D,
-            '/vision/detections',
-            10
-        )
+        # Normal detection stream – FSM uses this for state transitions
+        self.det_pub = self.create_publisher(Detections2D, '/vision/detections', 10)
 
-        # Rate limiting
-        self.last_detection_time = self.get_clock().now()
-        self.detection_period = 1.0 / detection_rate
+        # Hard-stop signal – FSM should subscribe and immediately enter PICKUP
+        self.locked_pub = self.create_publisher(Bool, '/vision/target_locked', 10)
+
+        # Watch FSM state so we can resume after the pickup-and-return leg
+        self.fsm_sub = self.create_subscription(
+            String, '/control/fsm_state', self._fsm_state_cb, 10)
+
+        self.last_proc_time = self.get_clock().now()
+        self.search_period = 1.0 / detection_rate
+        self.approach_period = 1.0 / approach_rate
+        self.detection_period = self.search_period
 
         self.get_logger().info(
-            f'Object detector initialized (type: {self.detector_type})'
+            f'Blue circle detector ready '
+            f'(H={self.h_min}-{self.h_max}, '
+            f'circularity>={self.circularity_thresh})'
         )
 
-    def image_callback(self, msg: Image):
-        """Process incoming image and detect objects."""
-        # Rate limiting
-        now = self.get_clock().now()
-        elapsed = (now - self.last_detection_time).nanoseconds / 1e9
-        if elapsed < self.detection_period:
+    # ------------------------------------------------------------------
+    def _fsm_state_cb(self, msg: String) -> None:
+        if msg.data == 'APPROACH_TARGET':
+            if self.detection_period != self.approach_period:
+                self.detection_period = self.approach_period
+                self.get_logger().info('Detection rate -> 60 Hz (approach)')
+        elif msg.data == 'PICKUP' and not self.target_acquired:
+            # Approach is done — go dormant while claw closes
+            self.target_acquired = True
+            self.detection_period = self.search_period
+            self.get_logger().info('Detection dormant during pickup')
+        elif msg.data == 'RETURN_FOLLOW_LINE' and self.target_acquired:
+            # Back on the line — resume at search rate, allow target_locked again
+            self.target_acquired = False
+            self.target_locked_sent = False
+            self.detection_period = self.search_period
+            self.get_logger().info('Detection re-enabled for return leg (15 Hz)')
+
+    # ------------------------------------------------------------------
+    def image_callback(self, msg: Image) -> None:
+        if self.target_acquired:
             return
-        self.last_detection_time = now
+
+        now = self.get_clock().now()
+        if (now - self.last_proc_time).nanoseconds / 1e9 < self.detection_period:
+            return
+        self.last_proc_time = now
 
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
+            frame = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
         except Exception as e:
-            self.get_logger().error(f'Failed to convert image: {e}')
+            self.get_logger().error(f'cv_bridge: {e}')
             return
 
-        # Create detections message
+        height, width = frame.shape[:2]
+
         det_msg = Detections2D()
         det_msg.stamp = msg.header.stamp
         det_msg.frame_id = msg.header.frame_id
 
-        if self.detector_type == 'yolo' and self.model is not None:
-            detections = self._detect_yolo(cv_image)
-        else:
-            detections = self._detect_heuristic(cv_image)
+        circle = self._detect_blue_circle(frame)
 
-        det_msg.detections = detections
+        if circle is not None:
+            cx_px, cy_px, radius, is_circular = circle
+
+            det = Detection2D()
+            det.class_name = 'blue_circle'
+            # score=1.0 → confirmed circle; score=0.5 → fallback blob (partial/clipped)
+            det.score = 1.0 if is_circular else 0.5
+            det.cx = float(cx_px / width)
+            det.cy = float(cy_px / height)
+            det.w = float(2.0 * radius / width)
+            det.h = float(2.0 * radius / height)
+            det_msg.detections = [det]
+
+            m = self.frame_margin
+            fully_in_frame = (
+                cx_px - radius >= m and
+                cx_px + radius <= width - m and
+                cy_px - radius >= m and
+                cy_px + radius <= height - m
+            )
+
+            if is_circular and fully_in_frame and not self.target_locked_sent:
+                self.get_logger().info(
+                    f'Full blue circle confirmed '
+                    f'(cx={cx_px:.0f} cy={cy_px:.0f} r={radius:.0f}px) — locking'
+                )
+                self.target_locked_sent = True
+                self.locked_pub.publish(Bool(data=True))
+
         self.det_pub.publish(det_msg)
 
-    def _detect_heuristic(self, image: np.ndarray) -> list:
-        """Detect objects using color-based heuristic."""
-        detections = []
-        height, width = image.shape[:2]
+    # ------------------------------------------------------------------
+    def _detect_blue_circle(self, image: np.ndarray):
+        """Return (cx, cy, radius, is_circular) of the best blue blob.
 
-        # Convert to HSV
+        Primary: most circular blob above circularity_thresh (is_circular=True).
+        Fallback: largest blue blob regardless of shape (is_circular=False),
+        used when the robot is close and the circle is partially clipped.
+        Returns None if no blob passes min_area_px.
+        """
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        # Threshold for target color
-        lower = np.array([self.h_min, self.s_min, self.v_min])
-        upper = np.array([self.h_max, self.s_max, self.v_max])
-        mask = cv2.inRange(hsv, lower, upper)
+        mask = cv2.inRange(
+            hsv,
+            np.array([self.h_min, self.s_min, self.v_min]),
+            np.array([self.h_max, self.s_max, self.v_max]),
+        )
 
-        # Morphological operations
-        kernel = np.ones((5, 5), np.uint8)
+        # Elliptical kernel cleans up blobs more naturally than a square
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
-        # Find contours
         contours, _ = cv2.findContours(
-            mask,
-            cv2.RETR_EXTERNAL,
-            cv2.CHAIN_APPROX_SIMPLE
-        )
+            mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        for contour in contours:
-            area = cv2.contourArea(contour)
-            if self.min_area <= area <= self.max_area:
-                x, y, w, h = cv2.boundingRect(contour)
+        best_circular = None
+        best_circularity = 0.0
+        best_fallback = None
+        best_fallback_area = 0.0
 
-                # Create detection
-                det = Detection2D()
-                det.class_name = self.target_class
-                # Confidence based on area (simple heuristic)
-                det.score = float(min(1.0, area / self.max_area + 0.5))
-                # Normalized coordinates
-                det.cx = float((x + w / 2) / width)
-                det.cy = float((y + h / 2) / height)
-                det.w = float(w / width)
-                det.h = float(h / height)
-
-                if det.score >= self.conf_threshold:
-                    detections.append(det)
-
-        return detections
-
-    def _detect_yolo(self, image: np.ndarray) -> list:
-        """Detect objects using YOLO model."""
-        detections = []
-        height, width = image.shape[:2]
-
-        # Run inference
-        results = self.model(image, verbose=False)
-
-        for result in results:
-            boxes = result.boxes
-            if boxes is None:
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area < self.min_area_px:
                 continue
 
-            for i in range(len(boxes)):
-                conf = float(boxes.conf[i])
-                if conf < self.conf_threshold:
-                    continue
+            perimeter = cv2.arcLength(cnt, True)
+            if perimeter == 0:
+                continue
 
-                cls_id = int(boxes.cls[i])
-                class_name = self.model.names[cls_id]
+            circularity = 4.0 * math.pi * area / (perimeter * perimeter)
 
-                # Get box coordinates
-                x1, y1, x2, y2 = boxes.xyxy[i].tolist()
+            if circularity >= self.circularity_thresh:
+                if circularity > best_circularity:
+                    best_circularity = circularity
+                    (cx, cy), radius = cv2.minEnclosingCircle(cnt)
+                    best_circular = (cx, cy, radius, True)
+            else:
+                # Keep as fallback candidate — largest blob wins
+                if area > best_fallback_area:
+                    best_fallback_area = area
+                    (cx, cy), radius = cv2.minEnclosingCircle(cnt)
+                    best_fallback = (cx, cy, radius, False)
 
-                det = Detection2D()
-                det.class_name = class_name
-                det.score = conf
-                det.cx = float((x1 + x2) / 2 / width)
-                det.cy = float((y1 + y2) / 2 / height)
-                det.w = float((x2 - x1) / width)
-                det.h = float((y2 - y1) / height)
-
-                detections.append(det)
-
-        return detections
+        return best_circular if best_circular is not None else best_fallback
 
 
 def main(args=None):

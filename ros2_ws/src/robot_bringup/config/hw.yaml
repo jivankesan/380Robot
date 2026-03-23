@@ -33,4 +33,13 @@ serial_bridge_node:
 
     # Minimum PWM to guarantee both wheels overcome static friction / deadband.
     # Raise if the inner wheel stalls during turns. Typical range: 50-80.
-    min_pwm: 20
+    min_pwm: 30
+    spin_pwm: 150
+
+    # Servo angles (degrees sent directly to Arduino as C,<servo>,<angle>)
+    # Servo 1 = rotation arm
+    servo1_home: 90      # level / resting position
+    servo1_carry: 135    # raised carry position after pickup
+    # Servo 2 = gripper
+    servo2_open: 70      # gripper open
+    servo2_closed: 150   # gripper closed

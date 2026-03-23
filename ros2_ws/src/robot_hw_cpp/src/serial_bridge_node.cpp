@@ -45,6 +45,11 @@ public:
     this->declare_parameter("left_motor_reversed", false);
     this->declare_parameter("right_motor_reversed", false);
     this->declare_parameter("min_pwm", 60);
+    this->declare_parameter("spin_pwm", 150);
+    this->declare_parameter("servo1_home", 90);
+    this->declare_parameter("servo1_carry", 135);
+    this->declare_parameter("servo2_open", 70);
+    this->declare_parameter("servo2_closed", 150);
 
     // Get parameters
     serial_port_ = this->get_parameter("serial_port").as_string();
@@ -60,6 +65,11 @@ public:
     left_reversed_ = this->get_parameter("left_motor_reversed").as_bool();
     right_reversed_ = this->get_parameter("right_motor_reversed").as_bool();
     min_pwm_ = this->get_parameter("min_pwm").as_int();
+    spin_pwm_ = this->get_parameter("spin_pwm").as_int();
+    servo1_home_ = this->get_parameter("servo1_home").as_int();
+    servo1_carry_ = this->get_parameter("servo1_carry").as_int();
+    servo2_open_ = this->get_parameter("servo2_open").as_int();
+    servo2_closed_ = this->get_parameter("servo2_closed").as_int();
 
     // Initialize state
     target_v_ = 0.0;
@@ -67,12 +77,16 @@ public:
     last_cmd_time_ = this->now();
     claw_mode_ = 0;
     claw_position_ = 0.0;
+    spin_toggle_ = false;
 
     // Open serial port
     if (!open_serial()) {
       RCLCPP_ERROR(this->get_logger(), "Failed to open serial port: %s", serial_port_.c_str());
     } else {
       RCLCPP_INFO(this->get_logger(), "Serial port opened: %s", serial_port_.c_str());
+      // Reset claw to open/home on startup (matches test_pickup.py reset sequence)
+      send_servo(2, servo2_open_);
+      send_servo(1, servo1_home_);
     }
 
     // Subscribers
@@ -198,6 +212,29 @@ private:
       target_omega_ = 0.0;
     }
 
+    // Pure-spin mode: hardware cannot drive both wheels in opposite directions
+    // simultaneously, so alternate M(-spin_pwm,0) / M(0,spin_pwm) each tick.
+    // Scale PWM proportionally to requested omega so gentle corrections don't
+    // fire the full spin_pwm (1.5 rad/s reference = full spin_pwm).
+    if (std::abs(target_v_) < 0.01 && std::abs(target_omega_) > 0.1) {
+      int dir = (target_omega_ > 0) ? 1 : -1;  // +1 = CCW, -1 = CW
+      int effective_pwm = std::clamp(
+        (int)(std::abs(target_omega_) / 1.5 * spin_pwm_),
+        min_pwm_, spin_pwm_);
+      // Logical: CCW → left backward, right forward
+      int left_pwm  = left_reversed_  ? (dir * effective_pwm) : (-dir * effective_pwm);
+      int right_pwm = right_reversed_ ? (-dir * effective_pwm) : (dir * effective_pwm);
+
+      if (spin_toggle_) {
+        send_motor_command(left_pwm, 0);
+      } else {
+        send_motor_command(0, right_pwm);
+      }
+      spin_toggle_ = !spin_toggle_;
+      return;
+    }
+    spin_toggle_ = false;  // reset when not in pure-spin
+
     // Convert twist to wheel velocities
     double v_left = target_v_ - target_omega_ * wheel_base_ / 2.0;
     double v_right = target_v_ + target_omega_ * wheel_base_ / 2.0;
@@ -252,20 +289,39 @@ private:
     }
   }
 
-  void send_claw_command(uint8_t mode, float position) {
+  void send_servo(int servo_num, int angle) {
     if (serial_fd_ < 0) {
       return;
     }
-
-    int pos_scaled = static_cast<int>(position * 1000);
     std::stringstream ss;
-    ss << "C," << static_cast<int>(mode) << "," << pos_scaled << "\n";
+    ss << "C," << servo_num << "," << angle << "\n";
     std::string cmd = ss.str();
-
     ssize_t written = write(serial_fd_, cmd.c_str(), cmd.length());
     if (written < 0) {
       RCLCPP_WARN_THROTTLE(
           this->get_logger(), *this->get_clock(), 1000, "Serial write failed");
+    }
+  }
+
+  void send_claw_command(uint8_t mode, float /*position*/) {
+    // MODE_OPEN  (0): open gripper + home rotation
+    // MODE_CLOSE (1): close gripper (rotation stays at home)
+    // MODE_HOLD  (2): no-op — hold current position
+    // MODE_ROTATE(3): rotate arm to carry position (gripper stays closed)
+    switch (mode) {
+      case robot_interfaces::msg::ClawCommand::MODE_OPEN:
+        send_servo(2, servo2_open_);
+        send_servo(1, servo1_home_);
+        break;
+      case robot_interfaces::msg::ClawCommand::MODE_CLOSE:
+        send_servo(2, servo2_closed_);
+        break;
+      case robot_interfaces::msg::ClawCommand::MODE_ROTATE:
+        send_servo(1, servo1_carry_);
+        break;
+      case robot_interfaces::msg::ClawCommand::MODE_HOLD:
+      default:
+        break;
     }
   }
 
@@ -350,6 +406,9 @@ private:
   double left_gain_, right_gain_;
   bool left_reversed_, right_reversed_;
   int min_pwm_;
+  int spin_pwm_;
+  int servo1_home_, servo1_carry_;
+  int servo2_open_, servo2_closed_;
 
   // Serial state
   int serial_fd_;
@@ -361,6 +420,7 @@ private:
   rclcpp::Time last_cmd_time_;
   uint8_t claw_mode_;
   float claw_position_;
+  bool spin_toggle_;
 
   // ROS interfaces
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;

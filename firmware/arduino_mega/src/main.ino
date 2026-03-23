@@ -6,7 +6,7 @@
  *
  * Commands (ROS -> Arduino):
  *   M,<left_pwm>,<right_pwm>\n   Motor command, PWM in [-255, 255]
- *   C,<mode>,<pos>\n             Claw command, mode 0=open/1=close/2=hold, pos 0-1000
+ *   C,<servo>,<angle>\n           Claw command: servo 1=rotation, 2=gripper; angle in degrees
  *
  * Telemetry (Arduino -> ROS):
  *   T,<battery_mv>,<left_enc>,<right_enc>,<estop>\n
@@ -26,7 +26,7 @@ const int MOTOR_STBY = 3;       // Standby - must be HIGH to enable motors
 
 // Claw servo pins
 const int CLAW_ROTATION_SERVO_PIN = 10;  // Servo 1: rotation axis
-const int CLAW_GRIPPER_SERVO_PIN = 9;    // Servo 2: open/close gripper
+const int CLAW_GRIPPER_SERVO_PIN = 11;   // Servo 2: open/close gripper
 
 // Battery voltage divider pin (analog)
 const int BATTERY_PIN = A0;
@@ -35,7 +35,7 @@ const int BATTERY_PIN = A0;
 const int ESTOP_PIN = -1;
 
 // Servo 2 (gripper) angles
-const int CLAW_OPEN_POS = 70;
+const int CLAW_OPEN_POS = 50;
 const int CLAW_CLOSED_POS = 130;
 
 // Servo 1 (rotation) angles
@@ -53,8 +53,6 @@ Servo clawRotationServo;
 Servo clawGripperServo;
 int currentLeftPWM = 0;
 int currentRightPWM = 0;
-int currentClawMode = 0;
-int currentClawPos = 0;
 unsigned long lastCommandTime = 0;
 unsigned long lastTelemetryTime = 0;
 bool estopActive = false;
@@ -178,42 +176,26 @@ void processMotorCommand(String params) {
 }
 
 void processClawCommand(String params) {
-  // Parse: <mode>,<pos>
+  // Parse: <servo_num>,<angle_degrees>
+  // servo_num 1 = rotation servo, 2 = gripper servo
   int commaIdx = params.indexOf(',');
   if (commaIdx < 0) {
     Serial.println("E,3,Invalid claw command");
     return;
   }
 
-  int mode = params.substring(0, commaIdx).toInt();
-  int pos = params.substring(commaIdx + 1).toInt();
+  int servoNum = params.substring(0, commaIdx).toInt();
+  int angle = constrain(params.substring(commaIdx + 1).toInt(), 0, 180);
 
-  currentClawMode = mode;
-  currentClawPos = constrain(pos, 0, 1000);
-
-  // Drive both servos based on mode
-  int gripperAngle;
-  int rotationAngle;
-  switch (mode) {
-    case 0:  // Open — gripper open, rotation horizontal
-      gripperAngle = CLAW_OPEN_POS;
-      rotationAngle = CLAW_HORIZONTAL_POS;
-      break;
-    case 1:  // Close — gripper closed, rotation rotated (carry position)
-      gripperAngle = CLAW_CLOSED_POS;
-      rotationAngle = CLAW_ROTATED_POS;
-      break;
-    case 2:  // Hold — interpolate gripper, keep rotation at carry position
-      gripperAngle = map(currentClawPos, 0, 1000, CLAW_OPEN_POS, CLAW_CLOSED_POS);
-      rotationAngle = CLAW_ROTATED_POS;
-      break;
-    default:
-      gripperAngle = CLAW_OPEN_POS;
-      rotationAngle = CLAW_HORIZONTAL_POS;
+  if (servoNum == 1) {
+    clawRotationServo.write(angle);
+  } else if (servoNum == 2) {
+    clawGripperServo.write(angle);
+  } else {
+    Serial.println("E,3,Invalid servo number");
+    return;
   }
 
-  clawGripperServo.write(gripperAngle);
-  clawRotationServo.write(rotationAngle);
   lastCommandTime = millis();
 }
 
