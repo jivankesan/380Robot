@@ -21,7 +21,7 @@ task_fsm_node:
     # Publish zero cmd_vel if circle unseen for longer than this
     approach_detection_timeout_s: 0.5
     # Circle must fill at least this fraction of frame height before pickup triggers
-    approach_min_circle_h: 0.75
+    approach_min_circle_h: 0.50
 
     # Pickup timing (seconds)
     pickup_close_time_s: 1.0
