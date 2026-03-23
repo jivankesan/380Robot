@@ -59,7 +59,7 @@ object_detector_node:
     frame_margin_px: 5
 
     # Search rate (line following phase)
-    detection_rate_hz: 15.0
+    detection_rate_hz: 30.0
     # Approach rate (once target is locked and FSM is in APPROACH_TARGET)
     approach_rate_hz: 60.0
 
