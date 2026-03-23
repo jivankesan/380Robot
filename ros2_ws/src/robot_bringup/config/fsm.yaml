@@ -9,15 +9,15 @@ task_fsm_node:
     # Linear speed while driving toward the circle
     approach_linear_speed_mps: 0.20
     # P gain: angular = -kp * (cx - 0.5)
-    approach_kp_angular: 2.5
-    approach_max_ang_vel_rps: 0.8
+    approach_kp_angular: 1.0
+    approach_max_ang_vel_rps: 0.4
     # |top_y - 0.5| < this  (top_y = cy - h/2, normalised)
     approach_top_tolerance_y: 0.15
     # |cx - 0.5| < this
     approach_center_tolerance_x: 0.20
     # Robot only drives forward once |cx - 0.5| is within this.
     # Keeps the circle from drifting off-frame while approaching off-axis.
-    approach_align_gate_x: 0.30
+    approach_align_gate_x: 0.20
     # Publish zero cmd_vel if circle unseen for longer than this
     approach_detection_timeout_s: 0.5
     # Circle must fill at least this fraction of frame height before pickup triggers
