@@ -26,7 +26,7 @@ task_fsm_node:
     # Pickup timing (seconds)
     pickup_close_time_s: 1.0
     pickup_rotate_time_s: 1.0
-    pickup_spin_time_s: 2.0
+    pickup_spin_time_s: 1.2
     pickup_spin_omega_rps: 1.5
 
     # Drop timing (seconds)

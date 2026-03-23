@@ -226,9 +226,9 @@ private:
       int effective_pwm = std::clamp(
         (int)(std::abs(target_omega_) / 1.5 * spin_pwm_),
         spin_min_pwm_, spin_pwm_);
-      // Logical: CCW → left backward, right forward
+      // Mode C (empirically verified): both wheels backward alternating
       int left_pwm  = left_reversed_  ? (dir * effective_pwm) : (-dir * effective_pwm);
-      int right_pwm = right_reversed_ ? (-dir * effective_pwm) : (dir * effective_pwm);
+      int right_pwm = right_reversed_ ? (dir * effective_pwm) : (-dir * effective_pwm);
 
       if (spin_toggle_) {
         send_motor_command(left_pwm, 0);

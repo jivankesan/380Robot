@@ -6,7 +6,8 @@
  * - INIT: Waiting for sensors to be ready
  * - FOLLOW_LINE_SEARCH: Following line, searching for target
  * - APPROACH_TARGET: Vision-based approach to blue circle (line following suppressed)
- * - PICKUP: Stopping and closing claw
+ * - PICKUP: Close claw then rotate arm (2 phases)
+ * - SPIN_180: Spin robot 180 degrees to face return direction
  * - RETURN_FOLLOW_LINE: Following line back to drop zone
  * - DROP: Opening claw to release object
  * - DONE: Mission complete
@@ -34,6 +35,7 @@ enum class State {
   FOLLOW_LINE_SEARCH,
   APPROACH_TARGET,
   PICKUP,
+  SPIN_180,
   RETURN_FOLLOW_LINE,
   DROP,
   DONE,
@@ -50,6 +52,8 @@ std::string state_to_string(State state) {
       return "APPROACH_TARGET";
     case State::PICKUP:
       return "PICKUP";
+    case State::SPIN_180:
+      return "SPIN_180";
     case State::RETURN_FOLLOW_LINE:
       return "RETURN_FOLLOW_LINE";
     case State::DROP:
@@ -211,7 +215,7 @@ private:
     }
     // Give a fresh line-loss window when entering RETURN_FOLLOW_LINE so the
     // robot has time to find the line after the pickup spin.
-    if (new_state == State::RETURN_FOLLOW_LINE) {
+    if (new_state == State::RETURN_FOLLOW_LINE || new_state == State::SPIN_180) {
       last_line_valid_time_ = this->now();
     }
     RCLCPP_INFO(
@@ -235,6 +239,7 @@ private:
                       current_state_ != State::INIT &&
                       current_state_ != State::APPROACH_TARGET &&
                       current_state_ != State::PICKUP &&
+                      current_state_ != State::SPIN_180 &&
                       current_state_ != State::DROP &&
                       current_state_ != State::DONE &&
                       current_state_ != State::FAILSAFE_STOP;
@@ -260,6 +265,9 @@ private:
         break;
       case State::PICKUP:
         handle_pickup();
+        break;
+      case State::SPIN_180:
+        handle_spin180();
         break;
       case State::RETURN_FOLLOW_LINE:
         handle_return_follow_line();
@@ -359,8 +367,7 @@ private:
 
     double t = (this->now() - state_start_time_).seconds();
     double t_rotate = pickup_close_time_;
-    double t_spin   = pickup_close_time_ + pickup_rotate_time_;
-    double t_done   = pickup_close_time_ + pickup_rotate_time_ + pickup_spin_time_;
+    double t_done   = pickup_close_time_ + pickup_rotate_time_;
 
     robot_interfaces::msg::ClawCommand claw_cmd;
 
@@ -370,24 +377,35 @@ private:
       claw_cmd.position = 1.0;
       claw_pub_->publish(claw_cmd);
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-                           "PICKUP phase 1/3 — closing claw (%.1f/%.1fs)", t, t_rotate);
-    } else if (t < t_spin) {
-      // Phase 2: rotate claw
+                           "PICKUP phase 1/2 — closing claw (%.1f/%.1fs)", t, t_rotate);
+    } else if (t < t_done) {
+      // Phase 2: rotate claw up
       claw_cmd.mode = robot_interfaces::msg::ClawCommand::MODE_ROTATE;
       claw_cmd.position = 1.0;
       claw_pub_->publish(claw_cmd);
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-                           "PICKUP phase 2/3 — rotating claw (%.1f/%.1fs)", t, t_spin);
-    } else if (t < t_done) {
-      // Phase 3: spin robot to face return direction
+                           "PICKUP phase 2/2 — rotating claw (%.1f/%.1fs)", t, t_done);
+    } else {
+      publish_zero_cmd();
+      RCLCPP_INFO(this->get_logger(), "Claw secured — spinning 180");
+      transition_to(State::SPIN_180);
+    }
+  }
+
+  void handle_spin180() {
+    publish_enable(false);
+
+    double t = (this->now() - state_start_time_).seconds();
+
+    if (t < pickup_spin_time_) {
       geometry_msgs::msg::Twist spin;
       spin.angular.z = pickup_spin_omega_;
       cmd_vel_pub_->publish(spin);
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500,
-                           "PICKUP phase 3/3 — spinning (%.1f/%.1fs)", t, t_done);
+                           "SPIN_180 — spinning (%.1f/%.1fs)", t, pickup_spin_time_);
     } else {
       publish_zero_cmd();
-      RCLCPP_INFO(this->get_logger(), "Pickup complete, returning");
+      RCLCPP_INFO(this->get_logger(), "Spin complete, returning to line");
       transition_to(State::RETURN_FOLLOW_LINE);
     }
   }
