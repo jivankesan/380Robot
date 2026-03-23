@@ -221,7 +221,7 @@ private:
     // simultaneously, so alternate M(-spin_pwm,0) / M(0,spin_pwm) each tick.
     // Scale PWM proportionally to requested omega so gentle corrections don't
     // fire the full spin_pwm (1.5 rad/s reference = full spin_pwm).
-    if (std::abs(target_v_) < 0.01 && std::abs(target_omega_) > 0.1) {
+    if (std::abs(target_v_) < 0.05 && std::abs(target_omega_) > 0.1) {
       int dir = (target_omega_ > 0) ? 1 : -1;  // +1 = CCW, -1 = CW
       int effective_pwm = std::clamp(
         (int)(std::abs(target_omega_) / 1.5 * spin_pwm_),
