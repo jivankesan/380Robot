@@ -35,6 +35,9 @@ serial_bridge_node:
     # Raise if the inner wheel stalls during turns. Typical range: 50-80.
     min_pwm: 30
     spin_pwm: 150
+    spin_min_pwm: 40
+    # Ticks each wheel holds before switching (at 50Hz, 5 ticks = 100ms per side)
+    spin_ticks_per_side: 5
 
     # Servo angles (degrees sent directly to Arduino as C,<servo>,<angle>)
     # Servo 1 = rotation arm

@@ -46,6 +46,8 @@ public:
     this->declare_parameter("right_motor_reversed", false);
     this->declare_parameter("min_pwm", 60);
     this->declare_parameter("spin_pwm", 150);
+    this->declare_parameter("spin_min_pwm", 40);
+    this->declare_parameter("spin_ticks_per_side", 5);
     this->declare_parameter("servo1_home", 90);
     this->declare_parameter("servo1_carry", 135);
     this->declare_parameter("servo2_open", 70);
@@ -66,6 +68,8 @@ public:
     right_reversed_ = this->get_parameter("right_motor_reversed").as_bool();
     min_pwm_ = this->get_parameter("min_pwm").as_int();
     spin_pwm_ = this->get_parameter("spin_pwm").as_int();
+    spin_min_pwm_ = this->get_parameter("spin_min_pwm").as_int();
+    spin_ticks_per_side_ = this->get_parameter("spin_ticks_per_side").as_int();
     servo1_home_ = this->get_parameter("servo1_home").as_int();
     servo1_carry_ = this->get_parameter("servo1_carry").as_int();
     servo2_open_ = this->get_parameter("servo2_open").as_int();
@@ -78,6 +82,7 @@ public:
     claw_mode_ = 0;
     claw_position_ = 0.0;
     spin_toggle_ = false;
+    spin_tick_count_ = 0;
 
     // Open serial port
     if (!open_serial()) {
@@ -220,7 +225,7 @@ private:
       int dir = (target_omega_ > 0) ? 1 : -1;  // +1 = CCW, -1 = CW
       int effective_pwm = std::clamp(
         (int)(std::abs(target_omega_) / 1.5 * spin_pwm_),
-        min_pwm_, spin_pwm_);
+        spin_min_pwm_, spin_pwm_);
       // Logical: CCW → left backward, right forward
       int left_pwm  = left_reversed_  ? (dir * effective_pwm) : (-dir * effective_pwm);
       int right_pwm = right_reversed_ ? (-dir * effective_pwm) : (dir * effective_pwm);
@@ -230,10 +235,15 @@ private:
       } else {
         send_motor_command(0, right_pwm);
       }
-      spin_toggle_ = !spin_toggle_;
+      spin_tick_count_++;
+      if (spin_tick_count_ >= spin_ticks_per_side_) {
+        spin_toggle_ = !spin_toggle_;
+        spin_tick_count_ = 0;
+      }
       return;
     }
     spin_toggle_ = false;  // reset when not in pure-spin
+    spin_tick_count_ = 0;
 
     // Convert twist to wheel velocities
     double v_left = target_v_ - target_omega_ * wheel_base_ / 2.0;
@@ -407,6 +417,8 @@ private:
   bool left_reversed_, right_reversed_;
   int min_pwm_;
   int spin_pwm_;
+  int spin_min_pwm_;
+  int spin_ticks_per_side_;
   int servo1_home_, servo1_carry_;
   int servo2_open_, servo2_closed_;
 
@@ -421,6 +433,7 @@ private:
   uint8_t claw_mode_;
   float claw_position_;
   bool spin_toggle_;
+  int spin_tick_count_;
 
   // ROS interfaces
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
