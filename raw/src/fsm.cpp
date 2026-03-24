@@ -216,8 +216,8 @@ static void handle_approach_drop_zone(FsmCtx& ctx, SharedState& state) {
     double t = ctx.state_elapsed();
 
     if (t < DROP_ZONE_TURN_TIME_S) {
-        // Left wheel forward only, right wheel stopped
-        set_direct_pwm(state, 120, 0);
+        // Right wheel forward only, left wheel stopped
+        set_direct_pwm(state, 0, 80);
         static double last_log = -1.0;
         if (t - last_log >= 0.2) {
             last_log = t;
