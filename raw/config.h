@@ -90,7 +90,7 @@ static constexpr double PICKUP_SPIN_OMEGA_RPS = 1.5;
 static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 
 // Drop zone approach (vision-based drive toward green box)
-static constexpr double DROP_ZONE_SPEED_MPS = 0.15;
+static constexpr double DROP_ZONE_SPEED_MPS = 0.10;
 static constexpr double DROP_ZONE_KP_ANGULAR = 1.5;
 static constexpr double DROP_ZONE_MAX_ANG_VEL = 2.0;
 static constexpr double DROP_ZONE_CENTER_TOL_X = 0.25;  // horizontal alignment tolerance

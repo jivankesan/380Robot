@@ -124,32 +124,36 @@ void control_thread(SharedState& state) {
         }
 
         // ── Speed profiler ───────────────────────────────────────────────────
-        double v_target = SP_V_MAX;
+        // Reverse bypasses the profiler completely – apply directly
+        if (raw_v < 0.0) {
+            v_cmd     = raw_v;
+            omega_cmd = raw_omega;
+        } else {
+            double v_target = SP_V_MAX;
 
-        if (line.valid) {
-            double curv = std::abs(line.curvature_1pm);
-            double lerr = std::abs(line.lateral_error_m);
-            double herr = std::abs(line.heading_error_rad);
-            v_target = SP_V_MAX
-                     - SP_K_CURVATURE * curv
-                     - SP_K_ERROR     * lerr
-                     - SP_K_HEADING   * herr;
+            if (line.valid) {
+                double curv = std::abs(line.curvature_1pm);
+                double lerr = std::abs(line.lateral_error_m);
+                double herr = std::abs(line.heading_error_rad);
+                v_target = SP_V_MAX
+                         - SP_K_CURVATURE * curv
+                         - SP_K_ERROR     * lerr
+                         - SP_K_HEADING   * herr;
+            }
+
+            if (raw_v < v_target) v_target = raw_v;
+            v_target = std::clamp(v_target, SP_V_MIN, SP_V_MAX);
+
+            double a_lim = (v_target < v_cmd) ? SP_A_MAX_DECEL : SP_A_MAX_ACCEL;
+            double dv    = std::clamp(v_target - v_cmd, -a_lim * dt, a_lim * dt);
+            v_cmd = std::clamp(v_cmd + dv, 0.0, SP_V_MAX);
+
+            double domega = std::clamp(raw_omega - omega_cmd,
+                                       -SP_ALPHA_MAX * dt, SP_ALPHA_MAX * dt);
+            omega_cmd += domega;
+
+            if (raw_v == 0.0) v_cmd = 0.0;
         }
-
-        if (raw_v < v_target && raw_v >= 0.0) v_target = raw_v;
-        v_target = std::clamp(v_target, SP_V_MIN, SP_V_MAX);
-
-        // Asymmetric accel/decel rate limiting
-        double a_lim = (v_target < v_cmd) ? SP_A_MAX_DECEL : SP_A_MAX_ACCEL;
-        double dv    = std::clamp(v_target - v_cmd, -a_lim * dt, a_lim * dt);
-        v_cmd = std::clamp(v_cmd + dv, 0.0, SP_V_MAX);
-
-        double domega = std::clamp(raw_omega - omega_cmd,
-                                   -SP_ALPHA_MAX * dt, SP_ALPHA_MAX * dt);
-        omega_cmd += domega;
-
-        // If commanded to stop linearly, snap immediately
-        if (raw_v <= 0.0) v_cmd = 0.0;
 
         // ── Twist → differential wheel PWM ──────────────────────────────────
         int pwm_l = 0, pwm_r = 0;
