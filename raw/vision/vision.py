@@ -249,7 +249,7 @@ def _run_object_detection(frame):
 
 
 def _run_green_detection(frame):
-    """Returns GREEN message string if drop-zone box found, else NOGREEN."""
+    """Returns GREEN message using centroid of all green pixels combined, else NOGREEN."""
     h, w = frame.shape[:2]
 
     y1  = int(h * GREEN_ROI_Y_END)
@@ -265,27 +265,22 @@ def _run_green_detection(frame):
     mask   = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     mask   = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  kernel)
 
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    M    = cv2.moments(mask)
+    area = M['m00']
 
-    best      = None
-    best_area = 0.0
-
-    for cnt in contours:
-        area = cv2.contourArea(cnt)
-        if area < GREEN_MIN_AREA_PX:
-            continue
-        if area > best_area:
-            best_area = area
-            x, y, bw, bh = cv2.boundingRect(cnt)
-            best = (x + bw / 2.0, y + bh / 2.0, bw, bh)
-
-    if best is None:
+    if area < GREEN_MIN_AREA_PX:
         return "NOGREEN"
 
-    cx_px, cy_px, bw_px, bh_px = best
-    cy_full = cy_px  # already in ROI which starts at 0
-    return (f"GREEN,{cx_px/w:.4f},{cy_full/h:.4f},"
-            f"{bw_px/w:.4f},{bh_px/h:.4f},1.00")
+    cx_px = M['m10'] / area
+    cy_px = M['m01'] / area  # relative to ROI (starts at y=0)
+
+    # Estimate bounding size from second moments for a rough w/h
+    x, y, bw, bh = cv2.boundingRect(
+        cv2.findNonZero(mask) if cv2.countNonZero(mask) > 0 else np.array([[[0,0]]])
+    )
+
+    return (f"GREEN,{cx_px/w:.4f},{cy_px/h:.4f},"
+            f"{bw/w:.4f},{bh/h:.4f},1.00")
 
 
 def object_thread(buf: FrameBuffer, sock: VisionSocket, stop: threading.Event):
