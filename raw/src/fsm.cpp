@@ -218,12 +218,11 @@ static void handle_approach_drop_zone(FsmCtx& ctx, SharedState& state) {
         return;
     }
 
-    double error_x = g.cx - 0.5;
-    bool   aligned = std::abs(error_x) < DROP_ZONE_CENTER_TOL_X;
-
-    // Drop as soon as green fills enough of the frame (opportunistic)
+    double error_x    = g.cx - 0.5;
     double green_area = g.w * g.h;
-    if (aligned && green_area >= DROP_ZONE_ARRIVED_AREA) {
+
+    // Drop as soon as green fills enough of the frame and roughly centred
+    if (green_area >= DROP_ZONE_ARRIVED_AREA && std::abs(error_x) < DROP_ZONE_CENTER_TOL_X) {
         std::cout << "[fsm] over drop zone (cx=" << g.cx << " cy=" << g.cy
                   << " area=" << green_area << ") – dropping\n";
         stop(state);
@@ -232,10 +231,10 @@ static void handle_approach_drop_zone(FsmCtx& ctx, SharedState& state) {
         return;
     }
 
-    double linear  = aligned ? DROP_ZONE_SPEED_MPS : 0.0;
+    // Always drive forward while aggressively steering toward centroid
     double angular = std::clamp(-DROP_ZONE_KP_ANGULAR * error_x,
                                 -DROP_ZONE_MAX_ANG_VEL, DROP_ZONE_MAX_ANG_VEL);
-    set_manual(state, linear, angular);
+    set_manual(state, DROP_ZONE_SPEED_MPS, angular);
 
     static double last_log = -1.0;
     double t = ctx.state_elapsed();
