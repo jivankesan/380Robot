@@ -120,9 +120,11 @@ static void handle_init(FsmCtx& ctx, SharedState& state) {
 
 static void handle_follow_line_search(FsmCtx& ctx, SharedState& state) {
     set_line_follow(state);
-    // Blue target fills the frame → robot is already on top of it. Stop and pick up.
-    if (ctx.target_locked) {
-        std::cout << "[fsm] blue target detected – stopping for pickup\n";
+    // Any blue blob seen → stop and pick up immediately.
+    if (ctx.det.valid) {
+        std::cout << "[fsm] blue detected (cx=" << ctx.det.cx
+                  << " cy=" << ctx.det.cy << " h=" << ctx.det.h
+                  << ") – stopping for pickup\n";
         stop(state);
         ctx.transition(State::PICKUP);
     }
@@ -170,19 +172,35 @@ static void handle_pickup(FsmCtx& ctx, SharedState& state) {
     double t_rotate = PICKUP_CLOSE_TIME_S;
     double t_done   = PICKUP_CLOSE_TIME_S + PICKUP_ROTATE_TIME_S;
 
+    static double last_log = -1.0;
+    if (t - last_log >= 0.5) {
+        last_log = t;
+        if (t < t_rotate)
+            std::cout << "[fsm] PICKUP phase 1/2: closing gripper (t=" << t << "s / " << t_rotate << "s)\n";
+        else if (t < t_done)
+            std::cout << "[fsm] PICKUP phase 2/2: rotating arm (t=" << t << "s / " << t_done << "s)\n";
+    }
+
     if (t < t_rotate) {
         send_claw(state, ClawMode::CLOSE);
     } else if (t < t_done) {
         send_claw(state, ClawMode::ROTATE);
     } else {
+        last_log = -1.0;
         std::cout << "[fsm] claw secured – spinning 180\n";
         ctx.transition(State::SPIN_180);
     }
 }
 
 static void handle_spin180(FsmCtx& ctx, SharedState& state) {
-    if (ctx.state_elapsed() < PICKUP_SPIN_TIME_S) {
+    double t = ctx.state_elapsed();
+    if (t < PICKUP_SPIN_TIME_S) {
         set_manual(state, 0.0, PICKUP_SPIN_OMEGA_RPS);
+        static double last_spin_log = -1.0;
+        if (t - last_spin_log >= 0.5) {
+            last_spin_log = t;
+            std::cout << "[fsm] SPIN_180: t=" << t << "s / " << PICKUP_SPIN_TIME_S << "s\n";
+        }
     } else {
         stop(state);
         std::cout << "[fsm] spin complete – returning to line\n";
@@ -193,7 +211,15 @@ static void handle_spin180(FsmCtx& ctx, SharedState& state) {
 static void handle_return_follow_line(FsmCtx& ctx, SharedState& state) {
     set_line_follow(state);
     send_claw(state, ClawMode::HOLD);
-    if (ctx.state_elapsed() > RETURN_TIME_S) {
+    double t = ctx.state_elapsed();
+    static double last_ret_log = -1.0;
+    if (t - last_ret_log >= 2.0) {
+        last_ret_log = t;
+        std::cout << "[fsm] RETURN: t=" << t << "s / " << RETURN_TIME_S
+                  << "s  line_valid=" << ctx.line.valid << "\n";
+    }
+    if (t > RETURN_TIME_S) {
+        last_ret_log = -1.0;
         std::cout << "[fsm] return time elapsed – dropping\n";
         ctx.transition(State::DROP);
     }

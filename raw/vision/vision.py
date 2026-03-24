@@ -24,7 +24,6 @@ Usage:
   camera_source: int (0 = /dev/video0) or MJPEG URL. Default: 0.
 """
 
-import math
 import socket
 import subprocess
 import sys
@@ -56,8 +55,6 @@ OBJ_H_MIN, OBJ_H_MAX    = 105, 125  # royal blue – tighter to avoid cyan/sky c
 OBJ_S_MIN, OBJ_S_MAX    = 120, 255  # allow slight shadow variation
 OBJ_V_MIN, OBJ_V_MAX    = 40,  255
 OBJ_MIN_AREA_PX          = 500
-OBJ_CIRCULARITY_THRESH   = 0.75
-OBJ_FRAME_MARGIN_PX      = 5
 
 # Pi camera resolution / framerate (used when camera_src is an integer)
 CAM_W   = 640
@@ -201,7 +198,7 @@ def line_thread(buf: FrameBuffer, sock: VisionSocket, stop: threading.Event):
 # ── Object detection ──────────────────────────────────────────────────────────
 
 def _run_object_detection(frame):
-    """Returns (msg, locked) where locked=True triggers a one-shot LOCKED send."""
+    """Returns DET message string if any blue blob found, else NODET."""
     h, w = frame.shape[:2]
 
     hsv  = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -216,62 +213,43 @@ def _run_object_detection(frame):
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    best_circular      = None
-    best_circ_val      = 0.0
-    best_fallback      = None
-    best_fallback_area = 0.0
+    best      = None
+    best_area = 0.0
 
     for cnt in contours:
-        area  = cv2.contourArea(cnt)
+        area = cv2.contourArea(cnt)
         if area < OBJ_MIN_AREA_PX:
             continue
-        perim = cv2.arcLength(cnt, True)
-        if perim == 0:
-            continue
-        circularity          = 4.0 * math.pi * area / (perim * perim)
-        (cx_px, cy_px), rad  = cv2.minEnclosingCircle(cnt)
+        if area > best_area:
+            best_area = area
+            (cx_px, cy_px), rad = cv2.minEnclosingCircle(cnt)
+            best = (cx_px, cy_px, rad)
 
-        if circularity >= OBJ_CIRCULARITY_THRESH:
-            if circularity > best_circ_val:
-                best_circ_val = circularity
-                best_circular = (cx_px, cy_px, rad, True)
-        else:
-            if area > best_fallback_area:
-                best_fallback_area = area
-                best_fallback      = (cx_px, cy_px, rad, False)
+    if best is None:
+        return "NODET"
 
-    result = best_circular if best_circular is not None else best_fallback
-    if result is None:
-        return "NODET", False
-
-    cx_px, cy_px, radius, is_circular = result
-    score  = 1.0 if is_circular else 0.5
-    msg    = (f"DET,{cx_px/w:.4f},{cy_px/h:.4f},"
-              f"{2*radius/w:.4f},{2*radius/h:.4f},{score:.2f}")
-
-    m        = OBJ_FRAME_MARGIN_PX
-    fully_in = (
-        cx_px - radius >= m and cx_px + radius <= w - m and
-        cy_px - radius >= m and cy_px + radius <= h - m
-    )
-    locked = is_circular and fully_in
-    return msg, locked
+    cx_px, cy_px, radius = best
+    return (f"DET,{cx_px/w:.4f},{cy_px/h:.4f},"
+            f"{2*radius/w:.4f},{2*radius/h:.4f},1.00")
 
 
 def object_thread(buf: FrameBuffer, sock: VisionSocket, stop: threading.Event):
-    period             = 1.0 / OBJECT_RATE_HZ
-    target_locked_sent = False
+    period     = 1.0 / OBJECT_RATE_HZ
+    last_log_t = 0.0
 
     while not stop.is_set():
         t0    = time.monotonic()
         frame = buf.get()
-        msg, locked = _run_object_detection(frame)   # GIL released inside OpenCV
+        msg   = _run_object_detection(frame)   # GIL released inside OpenCV
         sock.send(msg)
 
-        if locked and not target_locked_sent:
-            print("[object] full blue circle confirmed – sending LOCKED")
-            target_locked_sent = True
-            sock.send("LOCKED")
+        now = time.monotonic()
+        if msg != "NODET" and now - last_log_t >= 1.0:
+            last_log_t = now
+            print(f"[object] blue detected: {msg}")
+        elif msg == "NODET" and now - last_log_t >= 3.0:
+            last_log_t = now
+            print("[object] no blue detected")
 
         elapsed = time.monotonic() - t0
         sleep_s = period - elapsed
