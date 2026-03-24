@@ -101,7 +101,7 @@ static constexpr double DROP_UNROTATE_TIME_S = 1.0;  // time to rotate arm back 
 static constexpr double DROP_OPEN_TIME_S = 1.0;      // time to open gripper
 
 // Find line after drop (reverse briefly, then turn left until red line seen)
-static constexpr double FIND_LINE_REVERSE_TIME_S    = 0.5;   // reverse before turning
+static constexpr double FIND_LINE_REVERSE_TIME_S    = 1.0;   // reverse to clear dropped package
 static constexpr double FIND_LINE_REVERSE_SPEED_MPS = 0.15;
 static constexpr double FIND_LINE_OMEGA_RPS         = 1.2;   // positive = left turn
 static constexpr double FIND_LINE_TIMEOUT_S         = 6.0;   // failsafe if line never found

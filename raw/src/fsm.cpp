@@ -273,25 +273,16 @@ static void handle_drop(FsmCtx& ctx, SharedState& state) {
 static void handle_find_line(FsmCtx& ctx, SharedState& state) {
     double t = ctx.state_elapsed();
 
-    // Phase 1: reverse briefly to clear the drop zone
+    // Reverse both wheels straight back to clear the drop zone, then line follow
     if (t < FIND_LINE_REVERSE_TIME_S) {
         set_manual(state, -FIND_LINE_REVERSE_SPEED_MPS, 0.0);
+        std::cout << "[fsm] FIND_LINE: reversing (t=" << t << "s / "
+                  << FIND_LINE_REVERSE_TIME_S << "s)\n";
         return;
     }
 
-    // Phase 2: turn left until red line seen
-    if (ctx.line.valid) {
-        std::cout << "[fsm] line found – final follow\n";
-        stop(state);
-        ctx.transition(State::FINAL_FOLLOW);
-        return;
-    }
-    set_manual(state, 0.0, FIND_LINE_OMEGA_RPS);
-
-    if (t > FIND_LINE_TIMEOUT_S) {
-        std::cerr << "[fsm] FIND_LINE timeout – failsafe\n";
-        ctx.transition(State::FAILSAFE_STOP);
-    }
+    std::cout << "[fsm] reverse complete – resuming line follow\n";
+    ctx.transition(State::FINAL_FOLLOW);
 }
 
 static void handle_final_follow(FsmCtx& ctx, SharedState& state) {
