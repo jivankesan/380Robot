@@ -206,30 +206,10 @@ static void handle_return_follow_line(FsmCtx& ctx, SharedState& state) {
 }
 
 static void handle_approach_drop_zone(FsmCtx& ctx, SharedState& state) {
-    double t        = ctx.state_elapsed();
-    double t_drive  = DROP_ZONE_TURN_TIME_S;
-    double t_done   = DROP_ZONE_TURN_TIME_S + DROP_ZONE_DRIVE_TIME_S;
-
-    static double last_log = -1.0;
-    if (t - last_log >= 0.2) {
-        last_log = t;
-        if (t < t_drive)
-            std::cout << "[fsm] APPROACH_DROP turn  (t=" << t << "s / " << t_drive << "s)\n";
-        else
-            std::cout << "[fsm] APPROACH_DROP drive (t=" << t << "s / " << t_done << "s)\n";
-    }
-
-    if (t < t_drive) {
-        // Left wheel forward, right wheel stopped (arc right)
-        set_manual(state, DROP_ZONE_ARC_V, DROP_ZONE_ARC_OMEGA);
-    } else if (t < t_done) {
-        set_manual(state, DROP_ZONE_DRIVE_SPEED_MPS, 0.0);
-    } else {
-        std::cout << "[fsm] approach complete – dropping\n";
-        stop(state);
-        state.green_detect_enabled.store(false);
-        ctx.transition(State::DROP);
-    }
+    std::cout << "[fsm] green seen – stopping to drop\n";
+    stop(state);
+    state.green_detect_enabled.store(false);
+    ctx.transition(State::DROP);
 }
 
 static void handle_drop(FsmCtx& ctx, SharedState& state) {
