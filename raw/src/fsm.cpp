@@ -183,7 +183,7 @@ static void handle_pickup(FsmCtx& ctx, SharedState& state) {
     }
 
     if (t < t_close) {
-        set_manual(state, BASE_SPEED_MPS, 0.0);
+        set_manual(state, PICKUP_DRIVE_SPEED_MPS, 0.0);
     } else if (t < t_rotate) {
         stop(state);
         send_claw(state, ClawMode::CLOSE);
