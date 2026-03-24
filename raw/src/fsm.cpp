@@ -220,7 +220,8 @@ static void handle_approach_drop_zone(FsmCtx& ctx, SharedState& state) {
     }
 
     if (t < t_drive) {
-        set_manual(state, 0.0, DROP_ZONE_TURN_OMEGA_RPS);
+        // Left wheel forward, right wheel stopped (arc right)
+        set_manual(state, DROP_ZONE_ARC_V, DROP_ZONE_ARC_OMEGA);
     } else if (t < t_done) {
         set_manual(state, DROP_ZONE_DRIVE_SPEED_MPS, 0.0);
     } else {
