@@ -54,10 +54,11 @@ enum class ControlMode {
 };
 
 enum class ClawMode {
-    OPEN   = 0,
-    CLOSE  = 1,
-    HOLD   = 2,
-    ROTATE = 3
+    OPEN     = 0,
+    CLOSE    = 1,
+    HOLD     = 2,
+    ROTATE   = 3,
+    UNROTATE = 4   // rotate arm back to HOME position
 };
 
 // ── Shared state ──────────────────────────────────────────────────────────────
@@ -67,7 +68,8 @@ struct SharedState {
 
     // Vision
     LineObs   line_obs;
-    Detection detection;
+    Detection detection;        // blue
+    Detection green_detection;  // green drop zone
     bool      target_locked = false;
 
     // Hardware
@@ -94,8 +96,9 @@ struct SharedState {
     std::string fsm_state = "INIT";
 
     // When false, vision socket thread drops DET/NODET/LOCKED messages.
-    // FSM sets this false on PICKUP entry, true again if re-entering FOLLOW_LINE_SEARCH.
     std::atomic<bool> object_detect_enabled{true};
+    // When false, vision socket thread drops GREEN/NOGREEN messages.
+    std::atomic<bool> green_detect_enabled{false};
 
     // Shutdown signal
     std::atomic<bool> shutdown{false};

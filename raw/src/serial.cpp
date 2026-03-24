@@ -79,6 +79,9 @@ static void apply_claw(int fd, ClawMode mode) {
         case ClawMode::ROTATE:
             send_servo(fd, 1, SERVO1_CARRY);
             break;
+        case ClawMode::UNROTATE:
+            send_servo(fd, 1, SERVO1_HOME);
+            break;
         case ClawMode::HOLD:
         default:
             break;

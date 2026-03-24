@@ -92,6 +92,20 @@ static void parse_vision_message(const char* buf, SharedState& state) {
         if (!state.object_detect_enabled.load()) return;
         std::lock_guard<std::mutex> lk(state.mtx);
         state.detection.valid = false;
+    } else if (tok[0] == "GREEN" && tok.size() >= 6) {
+        if (!state.green_detect_enabled.load()) return;
+        std::lock_guard<std::mutex> lk(state.mtx);
+        state.green_detection.valid     = true;
+        state.green_detection.cx        = std::stof(tok[1]);
+        state.green_detection.cy        = std::stof(tok[2]);
+        state.green_detection.w         = std::stof(tok[3]);
+        state.green_detection.h         = std::stof(tok[4]);
+        state.green_detection.score     = std::stof(tok[5]);
+        state.green_detection.timestamp = Clock::now();
+    } else if (tok[0] == "NOGREEN") {
+        if (!state.green_detect_enabled.load()) return;
+        std::lock_guard<std::mutex> lk(state.mtx);
+        state.green_detection.valid = false;
     }
 }
 

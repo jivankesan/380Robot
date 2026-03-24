@@ -58,6 +58,13 @@ OBJ_MIN_AREA_PX          = 500
 OBJ_ROI_Y_START          = 0.0      # top of frame
 OBJ_ROI_Y_END            = 0.5      # bottom of top half
 
+# Green drop-zone detector
+GREEN_H_MIN, GREEN_H_MAX = 75,  105   # teal-green
+GREEN_S_MIN, GREEN_S_MAX = 80,  255
+GREEN_V_MIN, GREEN_V_MAX = 60,  255
+GREEN_MIN_AREA_PX        = 500
+GREEN_ROI_Y_END          = 0.65       # look in top 65% of frame
+
 # Pi camera resolution / framerate (used when camera_src is an integer)
 CAM_W   = 640
 CAM_H   = 480
@@ -241,15 +248,59 @@ def _run_object_detection(frame):
             f"{2*radius/w:.4f},{2*radius/h:.4f},1.00")
 
 
+def _run_green_detection(frame):
+    """Returns GREEN message string if drop-zone box found, else NOGREEN."""
+    h, w = frame.shape[:2]
+
+    y1  = int(h * GREEN_ROI_Y_END)
+    roi = frame[0:y1, :]
+
+    hsv  = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(
+        hsv,
+        np.array([GREEN_H_MIN, GREEN_S_MIN, GREEN_V_MIN]),
+        np.array([GREEN_H_MAX, GREEN_S_MAX, GREEN_V_MAX]),
+    )
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    mask   = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask   = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  kernel)
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    best      = None
+    best_area = 0.0
+
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area < GREEN_MIN_AREA_PX:
+            continue
+        if area > best_area:
+            best_area = area
+            x, y, bw, bh = cv2.boundingRect(cnt)
+            best = (x + bw / 2.0, y + bh / 2.0, bw, bh)
+
+    if best is None:
+        return "NOGREEN"
+
+    cx_px, cy_px, bw_px, bh_px = best
+    cy_full = cy_px  # already in ROI which starts at 0
+    return (f"GREEN,{cx_px/w:.4f},{cy_full/h:.4f},"
+            f"{bw_px/w:.4f},{bh_px/h:.4f},1.00")
+
+
 def object_thread(buf: FrameBuffer, sock: VisionSocket, stop: threading.Event):
-    period     = 1.0 / OBJECT_RATE_HZ
-    last_log_t = 0.0
+    period       = 1.0 / OBJECT_RATE_HZ
+    last_log_t   = 0.0
+    last_glog_t  = 0.0
 
     while not stop.is_set():
         t0    = time.monotonic()
         frame = buf.get()
-        msg   = _run_object_detection(frame)   # GIL released inside OpenCV
+
+        msg  = _run_object_detection(frame)   # blue
         sock.send(msg)
+        gmsg = _run_green_detection(frame)    # green
+        sock.send(gmsg)
 
         now = time.monotonic()
         if msg != "NODET" and now - last_log_t >= 1.0:
@@ -258,6 +309,10 @@ def object_thread(buf: FrameBuffer, sock: VisionSocket, stop: threading.Event):
         elif msg == "NODET" and now - last_log_t >= 3.0:
             last_log_t = now
             print("[object] no blue detected")
+
+        if gmsg != "NOGREEN" and now - last_glog_t >= 1.0:
+            last_glog_t = now
+            print(f"[object] green detected: {gmsg}")
 
         elapsed = time.monotonic() - t0
         sleep_s = period - elapsed
