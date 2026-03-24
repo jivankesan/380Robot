@@ -29,10 +29,10 @@ static constexpr bool   LEFT_REVERSED   = false;
 static constexpr bool   RIGHT_REVERSED  = false;
 
 // Servo angles (sent as C,<servo_num>,<angle>\n to Arduino)
-static constexpr int SERVO1_HOME   = 90;   // rotation arm: level/resting
-static constexpr int SERVO1_CARRY  = 135;  // rotation arm: raised carry
-static constexpr int SERVO2_OPEN   = 70;   // gripper: open
-static constexpr int SERVO2_CLOSED = 150;  // gripper: closed
+static constexpr int SERVO1_HOME   = 35;   // rotation arm: horizontal/resting
+static constexpr int SERVO1_CARRY  = 90;   // rotation arm: rotated carry
+static constexpr int SERVO2_OPEN   = 50;   // gripper: open
+static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 
 // ── Line-follow PD controller ────────────────────────────────────────────────
 // ROI is now a lookahead window (y: 0.10–0.60) so errors are larger and

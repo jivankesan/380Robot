@@ -55,6 +55,8 @@ OBJ_H_MIN, OBJ_H_MAX    = 105, 125  # royal blue – tighter to avoid cyan/sky c
 OBJ_S_MIN, OBJ_S_MAX    = 120, 255  # allow slight shadow variation
 OBJ_V_MIN, OBJ_V_MAX    = 40,  255
 OBJ_MIN_AREA_PX          = 500
+OBJ_ROI_Y_START          = 0.0      # top of frame
+OBJ_ROI_Y_END            = 0.5      # bottom of top half
 
 # Pi camera resolution / framerate (used when camera_src is an integer)
 CAM_W   = 640
@@ -198,10 +200,14 @@ def line_thread(buf: FrameBuffer, sock: VisionSocket, stop: threading.Event):
 # ── Object detection ──────────────────────────────────────────────────────────
 
 def _run_object_detection(frame):
-    """Returns DET message string if any blue blob found, else NODET."""
+    """Returns DET message string if any blue blob found in top half, else NODET."""
     h, w = frame.shape[:2]
 
-    hsv  = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    y0  = int(h * OBJ_ROI_Y_START)
+    y1  = int(h * OBJ_ROI_Y_END)
+    roi = frame[y0:y1, :]
+
+    hsv  = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(
         hsv,
         np.array([OBJ_H_MIN, OBJ_S_MIN, OBJ_V_MIN]),
@@ -229,7 +235,9 @@ def _run_object_detection(frame):
         return "NODET"
 
     cx_px, cy_px, radius = best
-    return (f"DET,{cx_px/w:.4f},{cy_px/h:.4f},"
+    # cy_px is relative to ROI; map back to full frame for normalised coords
+    cy_full = cy_px + y0
+    return (f"DET,{cx_px/w:.4f},{cy_full/h:.4f},"
             f"{2*radius/w:.4f},{2*radius/h:.4f},1.00")
 
 
