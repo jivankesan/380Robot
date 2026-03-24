@@ -59,11 +59,11 @@ OBJ_ROI_Y_START          = 0.0      # top of frame
 OBJ_ROI_Y_END            = 0.5      # bottom of top half
 
 # Green drop-zone detector
-GREEN_H_MIN, GREEN_H_MAX = 80,  100   # tighter teal-green
-GREEN_S_MIN, GREEN_S_MAX = 100, 255   # more saturated – avoids washed-out noise
-GREEN_V_MIN, GREEN_V_MAX = 80,  255
-GREEN_MIN_AREA_PX        = 3000       # real pixel count (m00/255)
-GREEN_ROI_Y_END          = 0.50       # top half only, same as blue
+GREEN_H_MIN, GREEN_H_MAX = 82,  97    # bright cyan-teal (as seen in image)
+GREEN_S_MIN, GREEN_S_MAX = 150, 255   # very saturated only
+GREEN_V_MIN, GREEN_V_MAX = 120, 255   # bright only
+GREEN_MIN_AREA_PX        = 15000      # only trigger when box fills a large portion of frame
+GREEN_ROI_Y_END          = 0.70       # top 70% – box spans past halfway when robot is over it
 
 # Pi camera resolution / framerate (used when camera_src is an integer)
 CAM_W   = 640
