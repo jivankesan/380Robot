@@ -206,42 +206,28 @@ static void handle_return_follow_line(FsmCtx& ctx, SharedState& state) {
 }
 
 static void handle_approach_drop_zone(FsmCtx& ctx, SharedState& state) {
-    const Detection& g = ctx.green_det;
+    double t        = ctx.state_elapsed();
+    double t_drive  = DROP_ZONE_TURN_TIME_S;
+    double t_done   = DROP_ZONE_TURN_TIME_S + DROP_ZONE_DRIVE_TIME_S;
 
-    if (!g.valid) {
-        double lost_for = duration_cast<duration<double>>(
-            Clock::now() - ctx.state_start).count();
-        if (lost_for > DROP_ZONE_DET_TIMEOUT_S) {
-            stop(state);
-            std::cout << "[fsm] green lost – stopping\n";
-        }
-        return;
+    static double last_log = -1.0;
+    if (t - last_log >= 0.2) {
+        last_log = t;
+        if (t < t_drive)
+            std::cout << "[fsm] APPROACH_DROP turn  (t=" << t << "s / " << t_drive << "s)\n";
+        else
+            std::cout << "[fsm] APPROACH_DROP drive (t=" << t << "s / " << t_done << "s)\n";
     }
 
-    double error_x    = g.cx - 0.5;
-    double green_area = g.w * g.h;
-
-    // Drop as soon as green fills enough of the frame and roughly centred
-    if (green_area >= DROP_ZONE_ARRIVED_AREA && std::abs(error_x) < DROP_ZONE_CENTER_TOL_X) {
-        std::cout << "[fsm] over drop zone (cx=" << g.cx << " cy=" << g.cy
-                  << " area=" << green_area << ") – dropping\n";
+    if (t < t_drive) {
+        set_manual(state, 0.0, DROP_ZONE_TURN_OMEGA_RPS);
+    } else if (t < t_done) {
+        set_manual(state, DROP_ZONE_DRIVE_SPEED_MPS, 0.0);
+    } else {
+        std::cout << "[fsm] approach complete – dropping\n";
         stop(state);
         state.green_detect_enabled.store(false);
         ctx.transition(State::DROP);
-        return;
-    }
-
-    // Always drive forward while aggressively steering toward centroid
-    double angular = std::clamp(DROP_ZONE_KP_ANGULAR * error_x,
-                                -DROP_ZONE_MAX_ANG_VEL, DROP_ZONE_MAX_ANG_VEL);
-    set_manual(state, DROP_ZONE_SPEED_MPS, angular);
-
-    static double last_log = -1.0;
-    double t = ctx.state_elapsed();
-    if (t - last_log >= 1.0) {
-        last_log = t;
-        std::cout << "[fsm] APPROACH_DROP: cx=" << g.cx << " cy=" << g.cy
-                  << " err_x=" << error_x << "\n";
     }
 }
 
