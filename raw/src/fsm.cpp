@@ -271,7 +271,15 @@ static void handle_drop(FsmCtx& ctx, SharedState& state) {
 }
 
 static void handle_find_line(FsmCtx& ctx, SharedState& state) {
-    // Turn left until the red line is visible
+    double t = ctx.state_elapsed();
+
+    // Phase 1: reverse briefly to clear the drop zone
+    if (t < FIND_LINE_REVERSE_TIME_S) {
+        set_manual(state, -FIND_LINE_REVERSE_SPEED_MPS, 0.0);
+        return;
+    }
+
+    // Phase 2: turn left until red line seen
     if (ctx.line.valid) {
         std::cout << "[fsm] line found – final follow\n";
         stop(state);
@@ -280,7 +288,7 @@ static void handle_find_line(FsmCtx& ctx, SharedState& state) {
     }
     set_manual(state, 0.0, FIND_LINE_OMEGA_RPS);
 
-    if (ctx.state_elapsed() > FIND_LINE_TIMEOUT_S) {
+    if (t > FIND_LINE_TIMEOUT_S) {
         std::cerr << "[fsm] FIND_LINE timeout – failsafe\n";
         ctx.transition(State::FAILSAFE_STOP);
     }

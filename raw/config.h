@@ -40,9 +40,9 @@ static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 // overshoot from acting on predicted-future error rather than current error.
 static constexpr double CONTROL_RATE_HZ = 100.0;
 static constexpr double KP_LATERAL = 3.0;
-static constexpr double KD_LATERAL = 4.5;
+static constexpr double KD_LATERAL = 6.0;
 static constexpr double KP_HEADING = 2.2;
-static constexpr double KD_HEADING = 5.0;
+static constexpr double KD_HEADING = 7.0;
 static constexpr double BASE_SPEED_MPS = 0.50;
 static constexpr double MAX_LIN_VEL_MPS = 0.50;
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
@@ -100,9 +100,11 @@ static constexpr double DROP_ZONE_DET_TIMEOUT_S = 0.5;
 static constexpr double DROP_UNROTATE_TIME_S = 1.0;  // time to rotate arm back to HOME
 static constexpr double DROP_OPEN_TIME_S = 1.0;      // time to open gripper
 
-// Find line after drop (turn left until red line seen)
-static constexpr double FIND_LINE_OMEGA_RPS = 1.2;  // positive = left turn
-static constexpr double FIND_LINE_TIMEOUT_S = 6.0;  // failsafe if line never found
+// Find line after drop (reverse briefly, then turn left until red line seen)
+static constexpr double FIND_LINE_REVERSE_TIME_S    = 0.5;   // reverse before turning
+static constexpr double FIND_LINE_REVERSE_SPEED_MPS = 0.15;
+static constexpr double FIND_LINE_OMEGA_RPS         = 1.2;   // positive = left turn
+static constexpr double FIND_LINE_TIMEOUT_S         = 6.0;   // failsafe if line never found
 
 // Approach (vision-based drive toward blue circle – unused in current flow, kept for reference)
 static constexpr double APPROACH_SPEED_MPS = 0.15;
