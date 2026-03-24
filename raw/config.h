@@ -90,10 +90,10 @@ static constexpr double PICKUP_SPIN_OMEGA_RPS = 1.5;
 static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 
 // Drop zone approach: turn right 30deg, then drive forward into box
-// Arc turn: left wheel forward, right wheel stopped
-// v_right = v + omega*L/2 = 0  →  omega = -2v/L  (L = WHEEL_BASE_M = 0.15)
-static constexpr double DROP_ZONE_ARC_V           = 0.10;   // left wheel speed / 2
-static constexpr double DROP_ZONE_ARC_OMEGA       = -1.33;  // -2*0.10/0.15
+// Arc turn: right wheel forward, left wheel stopped
+// v_left = v - omega*L/2 = 0  →  omega = 2v/L  (L = WHEEL_BASE_M = 0.15)
+static constexpr double DROP_ZONE_ARC_V           = 0.10;   // right wheel speed / 2
+static constexpr double DROP_ZONE_ARC_OMEGA       = 1.33;   // +2*0.10/0.15
 static constexpr double DROP_ZONE_TURN_TIME_S     = 0.20;   // arc turn duration
 static constexpr double DROP_ZONE_DRIVE_SPEED_MPS = 0.10;
 static constexpr double DROP_ZONE_DRIVE_TIME_S    = 0.25;
