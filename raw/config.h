@@ -90,10 +90,10 @@ static constexpr double PICKUP_SPIN_OMEGA_RPS = 1.5;
 static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 
 // Drop zone approach: turn right 30deg, then drive forward into box
-static constexpr double DROP_ZONE_TURN_OMEGA_RPS = -1.5;  // turn speed (negative = right)
-static constexpr double DROP_ZONE_TURN_TIME_S    = 0.35;  // 30deg @ 1.5 rad/s ≈ 0.35s
-static constexpr double DROP_ZONE_DRIVE_SPEED_MPS = 0.15;
-static constexpr double DROP_ZONE_DRIVE_TIME_S   = 0.5;
+static constexpr double DROP_ZONE_TURN_OMEGA_RPS  = -1.5;  // turn speed (negative = right)
+static constexpr double DROP_ZONE_TURN_TIME_S     = 0.70;  // 60deg @ 1.5 rad/s ≈ 0.70s
+static constexpr double DROP_ZONE_DRIVE_SPEED_MPS = 0.10;  // slow creep into box
+static constexpr double DROP_ZONE_DRIVE_TIME_S    = 0.5;
 
 // Drop sequence
 static constexpr double DROP_UNROTATE_TIME_S = 1.0;  // time to rotate arm back to HOME
