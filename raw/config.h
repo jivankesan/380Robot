@@ -91,11 +91,10 @@ static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 
 // Drop zone approach (vision-based drive toward green box)
 static constexpr double DROP_ZONE_SPEED_MPS = 0.10;
-static constexpr double DROP_ZONE_KP_ANGULAR = 4.0;
-static constexpr double DROP_ZONE_MAX_ANG_VEL = 3.5;
+static constexpr double DROP_ZONE_KP_ANGULAR = 6.0;
+static constexpr double DROP_ZONE_MAX_ANG_VEL = 5.0;
 static constexpr double DROP_ZONE_CENTER_TOL_X = 0.25;  // horizontal alignment tolerance
-static constexpr double DROP_ZONE_ARRIVED_AREA =
-  0.30;  // w*h > this → green fills enough of frame, drop
+static constexpr double DROP_ZONE_ARRIVED_AREA = 0.55;  // w*h > this → green fills enough of frame, drop
 static constexpr double DROP_ZONE_DET_TIMEOUT_S = 0.5;
 
 // Drop sequence
@@ -103,7 +102,7 @@ static constexpr double DROP_UNROTATE_TIME_S = 1.0;  // time to rotate arm back 
 static constexpr double DROP_OPEN_TIME_S = 1.0;      // time to open gripper
 
 // Find line after drop (reverse briefly, then turn left until red line seen)
-static constexpr double FIND_LINE_REVERSE_TIME_S = 0.4;      // reverse to clear dropped package
+static constexpr double FIND_LINE_REVERSE_TIME_S = 1.2;      // reverse to clear dropped package
 static constexpr double FIND_LINE_REVERSE_SPEED_MPS = 0.20;  // slow reverse
 static constexpr double FIND_LINE_OMEGA_RPS = 1.2;           // positive = left turn
 static constexpr double FIND_LINE_TIMEOUT_S = 6.0;           // failsafe if line never found
