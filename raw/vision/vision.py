@@ -52,9 +52,9 @@ LINE_CENTER_X_OFFSET     = 0          # px, compensates for off-centre camera mo
 LINE_PIXELS_TO_M         = 0.001      # px → metres for lateral error
 
 # Object detector (blue circle)
-OBJ_H_MIN, OBJ_H_MAX    = 100, 130
-OBJ_S_MIN, OBJ_S_MAX    = 150, 255
-OBJ_V_MIN, OBJ_V_MAX    = 50,  255
+OBJ_H_MIN, OBJ_H_MAX    = 105, 125  # royal blue – tighter to avoid cyan/sky confusion
+OBJ_S_MIN, OBJ_S_MAX    = 120, 255  # allow slight shadow variation
+OBJ_V_MIN, OBJ_V_MAX    = 40,  255
 OBJ_MIN_AREA_PX          = 500
 OBJ_CIRCULARITY_THRESH   = 0.75
 OBJ_FRAME_MARGIN_PX      = 5

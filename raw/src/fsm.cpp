@@ -120,10 +120,11 @@ static void handle_init(FsmCtx& ctx, SharedState& state) {
 
 static void handle_follow_line_search(FsmCtx& ctx, SharedState& state) {
     set_line_follow(state);
-    // Transition to APPROACH_TARGET happens when target_locked fires
+    // Blue target fills the frame → robot is already on top of it. Stop and pick up.
     if (ctx.target_locked) {
-        std::cout << "[fsm] full blue circle confirmed – entering approach\n";
-        ctx.transition(State::APPROACH_TARGET);
+        std::cout << "[fsm] blue target detected – stopping for pickup\n";
+        stop(state);
+        ctx.transition(State::PICKUP);
     }
 }
 
