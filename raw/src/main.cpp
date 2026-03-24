@@ -144,20 +144,28 @@ static void vision_socket_thread(SharedState& state) {
 // ── Launch vision.py as subprocess ────────────────────────────────────────────
 
 static pid_t launch_vision(const std::string& camera_src) {
+    // Resolve the directory containing the robot binary at runtime using
+    // /proc/self/exe — avoids relying on __FILE__ which is the compile-time
+    // path on the build machine and wrong when deployed to the Pi.
+    char exe_buf[4096] = {};
+    ssize_t len = readlink("/proc/self/exe", exe_buf, sizeof(exe_buf) - 1);
+    if (len < 0) {
+        perror("[main] readlink /proc/self/exe failed");
+        return -1;
+    }
+    std::string exe_path(exe_buf, len);
+
+    // exe is at .../raw/robot  →  go up one level to .../raw/
+    size_t pos = exe_path.rfind('/');
+    std::string base_dir = (pos != std::string::npos)
+                           ? exe_path.substr(0, pos)
+                           : ".";
+    std::string script_path = base_dir + "/vision/vision.py";
+
     pid_t pid = fork();
     if (pid == 0) {
-        // Child process
-        std::string script_path = std::string(__FILE__);
-        // __FILE__ is .../raw/src/main.cpp → go up two levels to .../raw/
-        size_t pos = script_path.rfind('/');  // remove main.cpp
-        if (pos != std::string::npos) script_path = script_path.substr(0, pos);
-        pos = script_path.rfind('/');         // remove src/
-        if (pos != std::string::npos) script_path = script_path.substr(0, pos);
-        script_path += "/vision/vision.py";
-
         execl("/usr/bin/python3", "python3", script_path.c_str(),
               camera_src.c_str(), nullptr);
-        // execl only returns on error
         perror("[main] execl vision.py failed");
         _exit(1);
     }
