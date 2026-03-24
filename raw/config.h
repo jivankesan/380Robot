@@ -47,9 +47,9 @@ static constexpr double BASE_SPEED_MPS = 0.95;
 static constexpr double MAX_LIN_VEL_MPS = 0.95;
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
 static constexpr double MAX_ANG_VEL_RPS = 2.5;     // was 1.6  – allow sharper corrections
-static constexpr double HEADING_BRAKE_GAIN = 3.8;  // scaled up with BASE_SPEED to keep same turn speed
-static constexpr double TURN_SPEED_GAIN = 9.5;     // scaled up with BASE_SPEED to keep same turn speed
-static constexpr double MIN_TURN_SPEED_MPS = 0.12;
+static constexpr double HEADING_BRAKE_GAIN = 1.5;
+static constexpr double TURN_SPEED_GAIN = 4.0;
+static constexpr double MIN_TURN_SPEED_MPS = 0.08;
 static constexpr double TURN_OMEGA_DEADBAND = 0.15;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
