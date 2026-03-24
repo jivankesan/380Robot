@@ -124,8 +124,7 @@ static void handle_follow_line_search(FsmCtx& ctx, SharedState& state) {
     if (ctx.det.valid) {
         std::cout << "[fsm] blue detected (cx=" << ctx.det.cx
                   << " cy=" << ctx.det.cy << " h=" << ctx.det.h
-                  << ") – stopping for pickup\n";
-        stop(state);
+                  << ") – driving forward for " << PICKUP_DRIVE_TIME_S << "s then closing\n";
         ctx.transition(State::PICKUP);
     }
 }
@@ -167,21 +166,26 @@ static void handle_approach_target(FsmCtx& ctx, SharedState& state) {
 }
 
 static void handle_pickup(FsmCtx& ctx, SharedState& state) {
-    stop(state);
     double t        = ctx.state_elapsed();
-    double t_rotate = PICKUP_CLOSE_TIME_S;
-    double t_done   = PICKUP_CLOSE_TIME_S + PICKUP_ROTATE_TIME_S;
+    double t_close  = PICKUP_DRIVE_TIME_S;
+    double t_rotate = PICKUP_DRIVE_TIME_S + PICKUP_CLOSE_TIME_S;
+    double t_done   = PICKUP_DRIVE_TIME_S + PICKUP_CLOSE_TIME_S + PICKUP_ROTATE_TIME_S;
 
     static double last_log = -1.0;
     if (t - last_log >= 0.5) {
         last_log = t;
-        if (t < t_rotate)
-            std::cout << "[fsm] PICKUP phase 1/2: closing gripper (t=" << t << "s / " << t_rotate << "s)\n";
+        if (t < t_close)
+            std::cout << "[fsm] PICKUP phase 1/3: driving forward (t=" << t << "s / " << t_close << "s)\n";
+        else if (t < t_rotate)
+            std::cout << "[fsm] PICKUP phase 2/3: closing gripper (t=" << t << "s / " << t_rotate << "s)\n";
         else if (t < t_done)
-            std::cout << "[fsm] PICKUP phase 2/2: rotating arm (t=" << t << "s / " << t_done << "s)\n";
+            std::cout << "[fsm] PICKUP phase 3/3: rotating arm (t=" << t << "s / " << t_done << "s)\n";
     }
 
-    if (t < t_rotate) {
+    if (t < t_close) {
+        set_manual(state, BASE_SPEED_MPS, 0.0);
+    } else if (t < t_rotate) {
+        stop(state);
         send_claw(state, ClawMode::CLOSE);
     } else if (t < t_done) {
         send_claw(state, ClawMode::ROTATE);
