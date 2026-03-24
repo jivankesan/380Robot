@@ -69,13 +69,14 @@ static constexpr double SAFETY_HW_TIMEOUT_S = 1.0;
 static constexpr double SAFETY_MIN_BATTERY_V = 0.0;  // 0 = disabled
 
 // ── Green drop-zone detector ─────────────────────────────────────────────────
-static constexpr int GREEN_H_MIN = 82;   // bright cyan-teal (as seen in image)
+static constexpr int GREEN_H_MIN = 82;  // bright cyan-teal (as seen in image)
 static constexpr int GREEN_H_MAX = 97;
 static constexpr int GREEN_S_MIN = 150;  // very saturated only
 static constexpr int GREEN_S_MAX = 255;
 static constexpr int GREEN_V_MIN = 120;  // bright only
 static constexpr int GREEN_V_MAX = 255;
-static constexpr int GREEN_MIN_AREA_PX = 15000;  // only trigger when box fills large portion of frame
+static constexpr int GREEN_MIN_AREA_PX =
+  15000;  // only trigger when box fills large portion of frame
 static constexpr double GREEN_ROI_Y_END = 0.70;  // top 70% – box spans past halfway when close
 
 // ── FSM ──────────────────────────────────────────────────────────────────────
@@ -84,7 +85,7 @@ static constexpr double PICKUP_DRIVE_TIME_S = 0.28;     // drive forward after b
 static constexpr double PICKUP_DRIVE_SPEED_MPS = 0.15;  // slow creep toward target
 static constexpr double PICKUP_CLOSE_TIME_S = 1.0;
 static constexpr double PICKUP_ROTATE_TIME_S = 1.0;
-static constexpr double PICKUP_SPIN_TIME_S = 1.2;
+static constexpr double PICKUP_SPIN_TIME_S = 1.1;
 static constexpr double PICKUP_SPIN_OMEGA_RPS = 1.5;
 static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 
@@ -92,8 +93,9 @@ static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 static constexpr double DROP_ZONE_SPEED_MPS = 0.15;
 static constexpr double DROP_ZONE_KP_ANGULAR = 1.5;
 static constexpr double DROP_ZONE_MAX_ANG_VEL = 2.0;
-static constexpr double DROP_ZONE_CENTER_TOL_X  = 0.25;  // horizontal alignment tolerance
-static constexpr double DROP_ZONE_ARRIVED_AREA  = 0.30;  // w*h > this → green fills enough of frame, drop
+static constexpr double DROP_ZONE_CENTER_TOL_X = 0.25;  // horizontal alignment tolerance
+static constexpr double DROP_ZONE_ARRIVED_AREA =
+  0.30;  // w*h > this → green fills enough of frame, drop
 static constexpr double DROP_ZONE_DET_TIMEOUT_S = 0.5;
 
 // Drop sequence
@@ -101,10 +103,10 @@ static constexpr double DROP_UNROTATE_TIME_S = 1.0;  // time to rotate arm back 
 static constexpr double DROP_OPEN_TIME_S = 1.0;      // time to open gripper
 
 // Find line after drop (reverse briefly, then turn left until red line seen)
-static constexpr double FIND_LINE_REVERSE_TIME_S    = 1.0;   // reverse to clear dropped package
+static constexpr double FIND_LINE_REVERSE_TIME_S = 1.0;      // reverse to clear dropped package
 static constexpr double FIND_LINE_REVERSE_SPEED_MPS = 0.35;  // must exceed motor deadband
-static constexpr double FIND_LINE_OMEGA_RPS         = 1.2;   // positive = left turn
-static constexpr double FIND_LINE_TIMEOUT_S         = 6.0;   // failsafe if line never found
+static constexpr double FIND_LINE_OMEGA_RPS = 1.2;           // positive = left turn
+static constexpr double FIND_LINE_TIMEOUT_S = 6.0;           // failsafe if line never found
 
 // Approach (vision-based drive toward blue circle – unused in current flow, kept for reference)
 static constexpr double APPROACH_SPEED_MPS = 0.15;
