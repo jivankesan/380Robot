@@ -39,9 +39,9 @@ static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 // arrive earlier. Gains raised accordingly; KD raised for damping to prevent
 // overshoot from acting on predicted-future error rather than current error.
 static constexpr double CONTROL_RATE_HZ = 100.0;
-static constexpr double KP_LATERAL = 3.0;
+static constexpr double KP_LATERAL = 2.5;
 static constexpr double KD_LATERAL = 6.0;
-static constexpr double KP_HEADING = 2.2;
+static constexpr double KP_HEADING = 1.8;
 static constexpr double KD_HEADING = 7.0;
 static constexpr double BASE_SPEED_MPS = 0.50;
 static constexpr double MAX_LIN_VEL_MPS = 0.50;
