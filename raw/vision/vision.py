@@ -268,14 +268,19 @@ def main():
     # Pi camera (integer index) → libcamerasrc GStreamer pipeline
     # URL / MJPEG stream        → VideoCapture directly
     if isinstance(camera_src, int):
-        # format=NV12 must be explicit: without it GStreamer negotiates raw Bayer
-        # (SGBRG16/RAW) which means the PiSP ISP never runs → "Internal data
-        # stream error". NV12 is the native PiSP processed output format.
+        # format=NV12 forces PiSP ISP to run (without it, raw Bayer is selected).
+        # queue elements decouple the pipeline stages so libcamerasrc can keep
+        # producing frames while videoconvert/appsink are processing.
+        # emit-signals=true + sync=false ensure OpenCV's cap.read() returns
+        # immediately with the latest frame rather than blocking.
         pipeline = (
             f"libcamerasrc ! "
             f"video/x-raw,format=NV12,width={CAM_W},height={CAM_H},framerate={CAM_FPS}/1 ! "
-            f"videoconvert ! video/x-raw,format=BGR ! "
-            f"appsink drop=true max-buffers=1 sync=false"
+            f"queue max-size-buffers=2 leaky=downstream ! "
+            f"videoconvert ! "
+            f"video/x-raw,format=BGR ! "
+            f"queue max-size-buffers=2 leaky=downstream ! "
+            f"appsink emit-signals=true max-buffers=1 drop=true sync=false"
         )
         print(f"[vision] opening Pi camera via GStreamer/libcamerasrc "
               f"({CAM_W}x{CAM_H} @ {CAM_FPS}fps, NV12→BGR)")

@@ -58,8 +58,11 @@ struct FsmCtx {
     void transition(State next) {
         if (next == current) return;
         std::cout << "[fsm] " << to_str(current) << " -> " << to_str(next) << "\n";
-        // Give a fresh line-loss window after spin (time to reacquire line)
-        if (next == State::RETURN_FOLLOW_LINE || next == State::SPIN_180) {
+        // Reset line-loss timer whenever entering a state that checks it,
+        // so startup/spin delays don't immediately trigger failsafe.
+        if (next == State::FOLLOW_LINE_SEARCH ||
+            next == State::RETURN_FOLLOW_LINE ||
+            next == State::SPIN_180) {
             last_line_valid_time = Clock::now();
         }
         current     = next;
