@@ -65,7 +65,7 @@ CAM_H   = 480
 CAM_FPS = 60
 
 # Rates
-LINE_RATE_HZ   = 30.0
+LINE_RATE_HZ   = 60.0   # match camera framerate – faster corrections
 OBJECT_RATE_HZ = 15.0
 
 # ── Shared frame buffer ────────────────────────────────────────────────────────
