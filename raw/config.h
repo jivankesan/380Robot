@@ -91,7 +91,7 @@ static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 
 // Drop zone approach: turn right 30deg, then drive forward into box
 // Drop zone: stop, turn hard right, then drop
-static constexpr double DROP_ZONE_TURN_OMEGA_RPS  = -2.0;  // hard right (negative = right)
+static constexpr double DROP_ZONE_TURN_OMEGA_RPS  = 2.0;   // hard right (positive = right)
 static constexpr double DROP_ZONE_TURN_TIME_S     = 0.40;  // tune to adjust angle
 
 // Drop sequence
