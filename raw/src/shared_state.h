@@ -50,7 +50,8 @@ struct HwStatus {
 
 enum class ControlMode {
     LINE_FOLLOW,  // PD controller uses vision line data
-    MANUAL        // FSM writes manual_cmd_v / manual_cmd_omega directly
+    MANUAL,       // FSM writes manual_cmd_v / manual_cmd_omega directly
+    DIRECT_PWM    // FSM writes raw PWM directly, bypasses all logic
 };
 
 enum class ClawMode {
@@ -80,6 +81,8 @@ struct SharedState {
     ControlMode control_mode     = ControlMode::LINE_FOLLOW;
     double      manual_cmd_v     = 0.0;
     double      manual_cmd_omega = 0.0;
+    int         direct_pwm_left  = 0;   // used when control_mode == DIRECT_PWM
+    int         direct_pwm_right = 0;
 
     // Final motor commands written by ControlThread, read by SerialThread
     int motor_pwm_left  = 0;

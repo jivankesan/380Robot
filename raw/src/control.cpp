@@ -47,6 +47,7 @@ void control_thread(SharedState& state) {
         double manual_v, manual_omega;
         bool hw_ready;
 
+        int direct_l = 0, direct_r = 0;
         {
             std::lock_guard<std::mutex> lk(state.mtx);
             line         = state.line_obs;
@@ -55,6 +56,8 @@ void control_thread(SharedState& state) {
             manual_v     = state.manual_cmd_v;
             manual_omega = state.manual_cmd_omega;
             hw_ready     = state.hw_ready;
+            direct_l     = state.direct_pwm_left;
+            direct_r     = state.direct_pwm_right;
         }
 
         // ── Safety checks ────────────────────────────────────────────────────
@@ -77,6 +80,14 @@ void control_thread(SharedState& state) {
         {
             std::lock_guard<std::mutex> lk(state.mtx);
             state.estop = false;
+        }
+
+        // ── Direct PWM passthrough ───────────────────────────────────────────
+        if (mode == ControlMode::DIRECT_PWM) {
+            std::lock_guard<std::mutex> lk(state.mtx);
+            state.motor_pwm_left  = direct_l;
+            state.motor_pwm_right = direct_r;
+            continue;
         }
 
         // ── Compute raw (v, omega) ───────────────────────────────────────────

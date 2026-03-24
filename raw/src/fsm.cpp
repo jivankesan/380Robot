@@ -101,6 +101,13 @@ static void set_manual(SharedState& s, double v, double omega) {
 
 static void stop(SharedState& s) { set_manual(s, 0.0, 0.0); }
 
+static void set_direct_pwm(SharedState& s, int left, int right) {
+    std::lock_guard<std::mutex> lk(s.mtx);
+    s.control_mode    = ControlMode::DIRECT_PWM;
+    s.direct_pwm_left  = left;
+    s.direct_pwm_right = right;
+}
+
 static void send_claw(SharedState& s, ClawMode mode) {
     std::lock_guard<std::mutex> lk(s.mtx);
     s.claw_mode        = mode;
@@ -209,7 +216,8 @@ static void handle_approach_drop_zone(FsmCtx& ctx, SharedState& state) {
     double t = ctx.state_elapsed();
 
     if (t < DROP_ZONE_TURN_TIME_S) {
-        set_manual(state, 0.0, DROP_ZONE_TURN_OMEGA_RPS);
+        // Left wheel forward only, right wheel stopped
+        set_direct_pwm(state, 120, 0);
         static double last_log = -1.0;
         if (t - last_log >= 0.2) {
             last_log = t;
