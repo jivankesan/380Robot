@@ -263,7 +263,7 @@ static void handle_find_line(FsmCtx& ctx, SharedState& state) {
 
     // Mirror the drop turn: right wheel backward, left stopped
     if (t < FIND_LINE_REVERSE_TIME_S) {
-        set_direct_pwm(state, 0, -50);
+        set_direct_pwm(state, 0, -100);
         std::cout << "[fsm] FIND_LINE: reversing (t=" << t << "s / "
                   << FIND_LINE_REVERSE_TIME_S << "s)\n";
         return;
