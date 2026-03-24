@@ -191,7 +191,7 @@ def line_thread(buf: FrameBuffer, sock: VisionSocket, stop: threading.Event):
     while not stop.is_set():
         t0    = time.monotonic()
         frame = buf.get()
-        msg   = _run_line_detection(frame)   # GIL released inside OpenCV
+        msg   = _run_line_detection(frame)
         sock.send(msg)
         elapsed = time.monotonic() - t0
         sleep_s = period - elapsed
