@@ -62,8 +62,8 @@ OBJ_ROI_Y_END            = 0.5      # bottom of top half
 GREEN_H_MIN, GREEN_H_MAX = 75,  105   # teal-green
 GREEN_S_MIN, GREEN_S_MAX = 80,  255
 GREEN_V_MIN, GREEN_V_MAX = 60,  255
-GREEN_MIN_AREA_PX        = 500
-GREEN_ROI_Y_END          = 0.65       # look in top 65% of frame
+GREEN_MIN_AREA_PX        = 2000       # large blob only – filter thin strips
+GREEN_ROI_Y_END          = 0.50       # top half only, same as blue
 
 # Pi camera resolution / framerate (used when camera_src is an integer)
 CAM_W   = 640

@@ -69,40 +69,40 @@ static constexpr double SAFETY_HW_TIMEOUT_S = 1.0;
 static constexpr double SAFETY_MIN_BATTERY_V = 0.0;  // 0 = disabled
 
 // ── Green drop-zone detector ─────────────────────────────────────────────────
-static constexpr int    GREEN_H_MIN       = 75;    // teal-green hue (tune if needed)
-static constexpr int    GREEN_H_MAX       = 105;
-static constexpr int    GREEN_S_MIN       = 80;
-static constexpr int    GREEN_S_MAX       = 255;
-static constexpr int    GREEN_V_MIN       = 60;
-static constexpr int    GREEN_V_MAX       = 255;
-static constexpr int    GREEN_MIN_AREA_PX = 500;
-static constexpr double GREEN_ROI_Y_END   = 0.65;  // look in top 65% of frame
+static constexpr int GREEN_H_MIN = 75;  // teal-green hue (tune if needed)
+static constexpr int GREEN_H_MAX = 105;
+static constexpr int GREEN_S_MIN = 80;
+static constexpr int GREEN_S_MAX = 255;
+static constexpr int GREEN_V_MIN = 60;
+static constexpr int GREEN_V_MAX = 255;
+static constexpr int GREEN_MIN_AREA_PX = 2000;   // large blob only – filter thin strips
+static constexpr double GREEN_ROI_Y_END = 0.50;  // top half only, same as blue
 
 // ── FSM ──────────────────────────────────────────────────────────────────────
 static constexpr double FSM_RATE_HZ = 20.0;
-static constexpr double PICKUP_DRIVE_TIME_S = 0.3;      // drive forward after blue seen
+static constexpr double PICKUP_DRIVE_TIME_S = 0.25;     // drive forward after blue seen
 static constexpr double PICKUP_DRIVE_SPEED_MPS = 0.15;  // slow creep toward target
 static constexpr double PICKUP_CLOSE_TIME_S = 1.0;
 static constexpr double PICKUP_ROTATE_TIME_S = 1.0;
-static constexpr double PICKUP_SPIN_TIME_S = 1.4;
+static constexpr double PICKUP_SPIN_TIME_S = 1.25;
 static constexpr double PICKUP_SPIN_OMEGA_RPS = 1.5;
 static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 
 // Drop zone approach (vision-based drive toward green box)
-static constexpr double DROP_ZONE_SPEED_MPS      = 0.15;
-static constexpr double DROP_ZONE_KP_ANGULAR     = 1.5;
-static constexpr double DROP_ZONE_MAX_ANG_VEL    = 2.0;
-static constexpr double DROP_ZONE_CENTER_TOL_X   = 0.20;  // horizontal alignment tolerance
-static constexpr double DROP_ZONE_ARRIVED_CY     = 0.40;  // cy > this → we're over the box
-static constexpr double DROP_ZONE_DET_TIMEOUT_S  = 0.5;
+static constexpr double DROP_ZONE_SPEED_MPS = 0.15;
+static constexpr double DROP_ZONE_KP_ANGULAR = 1.5;
+static constexpr double DROP_ZONE_MAX_ANG_VEL = 2.0;
+static constexpr double DROP_ZONE_CENTER_TOL_X = 0.20;  // horizontal alignment tolerance
+static constexpr double DROP_ZONE_ARRIVED_CY = 0.40;    // cy > this → we're over the box
+static constexpr double DROP_ZONE_DET_TIMEOUT_S = 0.5;
 
 // Drop sequence
 static constexpr double DROP_UNROTATE_TIME_S = 1.0;  // time to rotate arm back to HOME
-static constexpr double DROP_OPEN_TIME_S     = 1.0;  // time to open gripper
+static constexpr double DROP_OPEN_TIME_S = 1.0;      // time to open gripper
 
 // Find line after drop (turn left until red line seen)
-static constexpr double FIND_LINE_OMEGA_RPS  = 1.2;   // positive = left turn
-static constexpr double FIND_LINE_TIMEOUT_S  = 6.0;   // failsafe if line never found
+static constexpr double FIND_LINE_OMEGA_RPS = 1.2;  // positive = left turn
+static constexpr double FIND_LINE_TIMEOUT_S = 6.0;  // failsafe if line never found
 
 // Approach (vision-based drive toward blue circle – unused in current flow, kept for reference)
 static constexpr double APPROACH_SPEED_MPS = 0.15;
