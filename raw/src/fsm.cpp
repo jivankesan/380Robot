@@ -232,7 +232,7 @@ static void handle_approach_drop_zone(FsmCtx& ctx, SharedState& state) {
     }
 
     // Always drive forward while aggressively steering toward centroid
-    double angular = std::clamp(-DROP_ZONE_KP_ANGULAR * error_x,
+    double angular = std::clamp(DROP_ZONE_KP_ANGULAR * error_x,
                                 -DROP_ZONE_MAX_ANG_VEL, DROP_ZONE_MAX_ANG_VEL);
     set_manual(state, DROP_ZONE_SPEED_MPS, angular);
 
