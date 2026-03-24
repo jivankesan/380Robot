@@ -58,6 +58,11 @@ OBJ_MIN_AREA_PX          = 500
 OBJ_CIRCULARITY_THRESH   = 0.75
 OBJ_FRAME_MARGIN_PX      = 5
 
+# Pi camera resolution / framerate (used when camera_src is an integer)
+CAM_W   = 640
+CAM_H   = 480
+CAM_FPS = 60
+
 # Rates
 LINE_RATE_HZ   = 30.0
 OBJECT_RATE_HZ = 15.0
@@ -251,10 +256,34 @@ def main():
     except ValueError:
         pass
 
-    print(f"[vision] opening camera: {camera_src}")
-    cap = cv2.VideoCapture(camera_src)
+    # For Pi camera (integer index): use libcamerasrc GStreamer pipeline.
+    # Verify OpenCV was built with GStreamer support before we try to use it.
+    build_info = cv2.getBuildInformation()
+    if "GStreamer:                   YES" not in build_info:
+        print("[vision] ERROR: OpenCV was built without GStreamer support.")
+        print("         Install opencv with GStreamer: sudo apt install python3-opencv")
+        print("         Or check: python3 -c \"import cv2; print(cv2.getBuildInformation())\"")
+        sys.exit(1)
+
+    # Pi camera (integer index) → libcamerasrc GStreamer pipeline
+    # URL / MJPEG stream        → VideoCapture directly
+    if isinstance(camera_src, int):
+        pipeline = (
+            f"libcamerasrc ! "
+            f"video/x-raw,width={CAM_W},height={CAM_H},framerate={CAM_FPS}/1 ! "
+            f"videoconvert ! video/x-raw,format=BGR ! "
+            f"appsink drop=true max-buffers=1 sync=false"
+        )
+        print(f"[vision] opening Pi camera via GStreamer/libcamerasrc "
+              f"({CAM_W}x{CAM_H} @ {CAM_FPS}fps)")
+        cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+    else:
+        print(f"[vision] opening stream: {camera_src}")
+        cap = cv2.VideoCapture(camera_src)
+
     if not cap.isOpened():
-        print(f"[vision] ERROR: could not open camera {camera_src}")
+        print("[vision] ERROR: could not open camera. Check libcamerasrc is installed:")
+        print("         sudo apt install gstreamer1.0-libcamera")
         sys.exit(1)
 
     buf  = FrameBuffer()
@@ -262,7 +291,7 @@ def main():
     stop = threading.Event()
 
     threads = [
-        threading.Thread(target=capture_thread, args=(cap, buf, stop),  daemon=True, name="capture"),
+        threading.Thread(target=capture_thread, args=(cap, buf, stop), daemon=True, name="capture"),
         threading.Thread(target=line_thread,    args=(buf, sock, stop), daemon=True, name="line"),
         threading.Thread(target=object_thread,  args=(buf, sock, stop), daemon=True, name="object"),
     ]
@@ -279,7 +308,7 @@ def main():
     finally:
         stop.set()
         for t in threads:
-            t.join(timeout=1.0)
+            t.join(timeout=2.0)
         cap.release()
         print("[vision] stopped")
 
