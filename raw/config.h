@@ -93,7 +93,7 @@ static constexpr double DROP_ZONE_SPEED_MPS = 0.15;
 static constexpr double DROP_ZONE_KP_ANGULAR = 1.5;
 static constexpr double DROP_ZONE_MAX_ANG_VEL = 2.0;
 static constexpr double DROP_ZONE_CENTER_TOL_X = 0.20;  // horizontal alignment tolerance
-static constexpr double DROP_ZONE_ARRIVED_CY = 0.40;    // cy > this → we're over the box
+static constexpr double DROP_ZONE_ARRIVED_CY = 0.25;    // cy > this → we're over the box
 static constexpr double DROP_ZONE_DET_TIMEOUT_S = 0.5;
 
 // Drop sequence
