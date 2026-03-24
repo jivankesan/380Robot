@@ -59,10 +59,10 @@ OBJ_ROI_Y_START          = 0.0      # top of frame
 OBJ_ROI_Y_END            = 0.5      # bottom of top half
 
 # Green drop-zone detector
-GREEN_H_MIN, GREEN_H_MAX = 75,  105   # teal-green
-GREEN_S_MIN, GREEN_S_MAX = 80,  255
-GREEN_V_MIN, GREEN_V_MAX = 60,  255
-GREEN_MIN_AREA_PX        = 2000       # large blob only – filter thin strips
+GREEN_H_MIN, GREEN_H_MAX = 80,  100   # tighter teal-green
+GREEN_S_MIN, GREEN_S_MAX = 100, 255   # more saturated – avoids washed-out noise
+GREEN_V_MIN, GREEN_V_MAX = 80,  255
+GREEN_MIN_AREA_PX        = 3000       # real pixel count (m00/255)
 GREEN_ROI_Y_END          = 0.50       # top half only, same as blue
 
 # Pi camera resolution / framerate (used when camera_src is an integer)
@@ -265,14 +265,14 @@ def _run_green_detection(frame):
     mask   = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     mask   = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  kernel)
 
-    M    = cv2.moments(mask)
-    area = M['m00']
+    M        = cv2.moments(mask)
+    area_px  = M['m00'] / 255.0   # m00 sums pixel values (0 or 255), divide to get pixel count
 
-    if area < GREEN_MIN_AREA_PX:
+    if area_px < GREEN_MIN_AREA_PX:
         return "NOGREEN"
 
-    cx_px = M['m10'] / area
-    cy_px = M['m01'] / area  # relative to ROI (starts at y=0)
+    cx_px = (M['m10'] / 255.0) / area_px
+    cy_px = (M['m01'] / 255.0) / area_px  # relative to ROI (starts at y=0)
 
     # Estimate bounding size from second moments for a rough w/h
     x, y, bw, bh = cv2.boundingRect(

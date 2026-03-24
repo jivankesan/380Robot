@@ -69,13 +69,13 @@ static constexpr double SAFETY_HW_TIMEOUT_S = 1.0;
 static constexpr double SAFETY_MIN_BATTERY_V = 0.0;  // 0 = disabled
 
 // ── Green drop-zone detector ─────────────────────────────────────────────────
-static constexpr int GREEN_H_MIN = 75;  // teal-green hue (tune if needed)
-static constexpr int GREEN_H_MAX = 105;
-static constexpr int GREEN_S_MIN = 80;
+static constexpr int GREEN_H_MIN = 80;   // tighter teal-green hue
+static constexpr int GREEN_H_MAX = 100;
+static constexpr int GREEN_S_MIN = 100;  // more saturated – avoids washed-out noise
 static constexpr int GREEN_S_MAX = 255;
-static constexpr int GREEN_V_MIN = 60;
+static constexpr int GREEN_V_MIN = 80;
 static constexpr int GREEN_V_MAX = 255;
-static constexpr int GREEN_MIN_AREA_PX = 2000;   // large blob only – filter thin strips
+static constexpr int GREEN_MIN_AREA_PX = 3000;   // real pixel count (not m00 units)
 static constexpr double GREEN_ROI_Y_END = 0.50;  // top half only, same as blue
 
 // ── FSM ──────────────────────────────────────────────────────────────────────
