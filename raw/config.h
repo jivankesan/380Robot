@@ -92,9 +92,8 @@ static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 static constexpr double DROP_ZONE_SPEED_MPS = 0.15;
 static constexpr double DROP_ZONE_KP_ANGULAR = 1.5;
 static constexpr double DROP_ZONE_MAX_ANG_VEL = 2.0;
-static constexpr double DROP_ZONE_CENTER_TOL_X = 0.20;  // horizontal alignment tolerance
-static constexpr double DROP_ZONE_ARRIVED_CY = 0.30;    // cy > this → we're over the box
-static constexpr double DROP_ZONE_ARRIVED_H  = 0.45;    // box must also be this tall (close enough)
+static constexpr double DROP_ZONE_CENTER_TOL_X  = 0.25;  // horizontal alignment tolerance
+static constexpr double DROP_ZONE_ARRIVED_AREA  = 0.30;  // w*h > this → green fills enough of frame, drop
 static constexpr double DROP_ZONE_DET_TIMEOUT_S = 0.5;
 
 // Drop sequence
@@ -103,7 +102,7 @@ static constexpr double DROP_OPEN_TIME_S = 1.0;      // time to open gripper
 
 // Find line after drop (reverse briefly, then turn left until red line seen)
 static constexpr double FIND_LINE_REVERSE_TIME_S    = 1.0;   // reverse to clear dropped package
-static constexpr double FIND_LINE_REVERSE_SPEED_MPS = 0.15;
+static constexpr double FIND_LINE_REVERSE_SPEED_MPS = 0.35;  // must exceed motor deadband
 static constexpr double FIND_LINE_OMEGA_RPS         = 1.2;   // positive = left turn
 static constexpr double FIND_LINE_TIMEOUT_S         = 6.0;   // failsafe if line never found
 

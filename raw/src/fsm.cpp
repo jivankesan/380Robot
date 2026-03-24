@@ -221,10 +221,11 @@ static void handle_approach_drop_zone(FsmCtx& ctx, SharedState& state) {
     double error_x = g.cx - 0.5;
     bool   aligned = std::abs(error_x) < DROP_ZONE_CENTER_TOL_X;
 
-    // Arrived when box is large enough (close) AND centroid is low enough
-    if (aligned && g.cy >= DROP_ZONE_ARRIVED_CY && g.h >= DROP_ZONE_ARRIVED_H) {
+    // Drop as soon as green fills enough of the frame (opportunistic)
+    double green_area = g.w * g.h;
+    if (aligned && green_area >= DROP_ZONE_ARRIVED_AREA) {
         std::cout << "[fsm] over drop zone (cx=" << g.cx << " cy=" << g.cy
-                  << " h=" << g.h << ") – dropping\n";
+                  << " area=" << green_area << ") – dropping\n";
         stop(state);
         state.green_detect_enabled.store(false);
         ctx.transition(State::DROP);
