@@ -75,6 +75,7 @@ static void parse_vision_message(const char* buf, SharedState& state) {
         state.line_obs.curvature_1pm     = std::stof(tok[4]);
         state.line_obs.timestamp         = Clock::now();
     } else if (tok[0] == "DET" && tok.size() >= 6) {
+        if (!state.object_detect_enabled.load()) return;
         std::lock_guard<std::mutex> lk(state.mtx);
         state.detection.valid     = true;
         state.detection.cx        = std::stof(tok[1]);
@@ -84,9 +85,11 @@ static void parse_vision_message(const char* buf, SharedState& state) {
         state.detection.score     = std::stof(tok[5]);
         state.detection.timestamp = Clock::now();
     } else if (tok[0] == "LOCKED") {
+        if (!state.object_detect_enabled.load()) return;
         std::lock_guard<std::mutex> lk(state.mtx);
         state.target_locked = true;
     } else if (tok[0] == "NODET") {
+        if (!state.object_detect_enabled.load()) return;
         std::lock_guard<std::mutex> lk(state.mtx);
         state.detection.valid = false;
     }

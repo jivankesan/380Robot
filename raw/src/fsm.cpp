@@ -120,11 +120,18 @@ static void handle_init(FsmCtx& ctx, SharedState& state) {
 
 static void handle_follow_line_search(FsmCtx& ctx, SharedState& state) {
     set_line_follow(state);
+    // Ensure detection is enabled when searching (in case of re-entry)
+    if (!state.object_detect_enabled.load()) {
+        state.object_detect_enabled.store(true);
+        std::cout << "[fsm] object detection re-enabled\n";
+    }
     // Any blue blob seen → stop and pick up immediately.
     if (ctx.det.valid) {
         std::cout << "[fsm] blue detected (cx=" << ctx.det.cx
                   << " cy=" << ctx.det.cy << " h=" << ctx.det.h
                   << ") – driving forward for " << PICKUP_DRIVE_TIME_S << "s then closing\n";
+        state.object_detect_enabled.store(false);
+        std::cout << "[fsm] object detection disabled\n";
         ctx.transition(State::PICKUP);
     }
 }

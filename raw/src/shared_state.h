@@ -93,6 +93,10 @@ struct SharedState {
     // FSM state string (for console logging only)
     std::string fsm_state = "INIT";
 
+    // When false, vision socket thread drops DET/NODET/LOCKED messages.
+    // FSM sets this false on PICKUP entry, true again if re-entering FOLLOW_LINE_SEARCH.
+    std::atomic<bool> object_detect_enabled{true};
+
     // Shutdown signal
     std::atomic<bool> shutdown{false};
 };
