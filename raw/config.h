@@ -72,11 +72,11 @@ static constexpr double SAFETY_MIN_BATTERY_V = 0.0;  // 0 = disabled
 static constexpr double FSM_RATE_HZ = 20.0;
 static constexpr const char* TARGET_CLASS = "blue_circle";
 static constexpr double CONF_THRESHOLD = 0.5;
-static constexpr double PICKUP_DRIVE_TIME_S = 0.5;      // drive forward after blue seen
+static constexpr double PICKUP_DRIVE_TIME_S = 0.45;     // drive forward after blue seen
 static constexpr double PICKUP_DRIVE_SPEED_MPS = 0.15;  // slow creep toward target
 static constexpr double PICKUP_CLOSE_TIME_S = 1.0;
 static constexpr double PICKUP_ROTATE_TIME_S = 1.0;
-static constexpr double PICKUP_SPIN_TIME_S = 2.0;
+static constexpr double PICKUP_SPIN_TIME_S = 1.0;
 static constexpr double PICKUP_SPIN_OMEGA_RPS = 1.5;
 static constexpr double DROP_OPEN_TIME_S = 1.0;
 static constexpr double RETURN_TIME_S = 10.0;
