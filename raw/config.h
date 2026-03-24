@@ -80,11 +80,11 @@ static constexpr double GREEN_ROI_Y_END = 0.50;  // top half only, same as blue
 
 // ── FSM ──────────────────────────────────────────────────────────────────────
 static constexpr double FSM_RATE_HZ = 20.0;
-static constexpr double PICKUP_DRIVE_TIME_S = 0.25;     // drive forward after blue seen
+static constexpr double PICKUP_DRIVE_TIME_S = 0.28;     // drive forward after blue seen
 static constexpr double PICKUP_DRIVE_SPEED_MPS = 0.15;  // slow creep toward target
 static constexpr double PICKUP_CLOSE_TIME_S = 1.0;
 static constexpr double PICKUP_ROTATE_TIME_S = 1.0;
-static constexpr double PICKUP_SPIN_TIME_S = 1.25;
+static constexpr double PICKUP_SPIN_TIME_S = 1.2;
 static constexpr double PICKUP_SPIN_OMEGA_RPS = 1.5;
 static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 
