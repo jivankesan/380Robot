@@ -25,7 +25,7 @@ import time
 SERIAL_PORT      = '/dev/ttyUSB0'
 BAUD_RATE        = 115200
 
-FORWARD_PWM      =  100   # out of 255  (~0.3 m/s)
+FORWARD_PWM      =  255  # out of 255  (~0.3 m/s)
 BACKWARD_PWM     = -100
 
 FORWARD_DURATION  = 2.0   # seconds
@@ -104,25 +104,25 @@ def main():
         print(f'Pausing {PAUSE_DURATION:.1f}s...')
         time.sleep(PAUSE_DURATION)
 
-        drive(fd, BACKWARD_PWM, BACKWARD_PWM, BACKWARD_DURATION)
-        print(f'Pausing {PAUSE_DURATION:.1f}s...')
-        time.sleep(PAUSE_DURATION)
+        # drive(fd, BACKWARD_PWM, BACKWARD_PWM, BACKWARD_DURATION)
+        # print(f'Pausing {PAUSE_DURATION:.1f}s...')
+        # time.sleep(PAUSE_DURATION)
 
-        # ── Claw demo ───────────────────────────────────────────────────────
-        servo(fd, 2, 90,  'open')
-        time.sleep(CLAW_STEP_DELAY)
+        # # ── Claw demo ───────────────────────────────────────────────────────
+        # servo(fd, 2, 90,  'open')
+        # time.sleep(CLAW_STEP_DELAY)
 
-        servo(fd, 2, 150, 'close')
-        time.sleep(CLAW_STEP_DELAY)
+        # servo(fd, 2, 150, 'close')
+        # time.sleep(CLAW_STEP_DELAY)
 
-        servo(fd, 1, 90,  'tilt down')
-        time.sleep(CLAW_STEP_DELAY)
+        # servo(fd, 1, 90,  'tilt down')
+        # time.sleep(CLAW_STEP_DELAY)
 
-        servo(fd, 1, 135, 'tilt back / parallel')
-        time.sleep(CLAW_STEP_DELAY)
+        # servo(fd, 1, 135, 'tilt back / parallel')
+        # time.sleep(CLAW_STEP_DELAY)
 
-        servo(fd, 2, 90,  'open')
-        time.sleep(CLAW_STEP_DELAY)
+        # servo(fd, 2, 90,  'open')
+        # time.sleep(CLAW_STEP_DELAY)
 
     finally:
         send(fd, 'M,0,0')
