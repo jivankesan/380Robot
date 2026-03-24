@@ -54,6 +54,10 @@ struct FsmCtx {
     bool      estop         = false;
     TimePoint last_line_valid_time    = Clock::now();
     TimePoint last_detection_time     = Clock::now();
+    // Set to true the first time a valid LINE is seen in FOLLOW_LINE_SEARCH.
+    // The line-loss check is suppressed until then so vision startup delay
+    // (rpicam-vid init, first frame decode) doesn't trigger a false failsafe.
+    bool line_ever_seen = false;
 
     void transition(State next) {
         if (next == current) return;
@@ -64,6 +68,11 @@ struct FsmCtx {
             next == State::RETURN_FOLLOW_LINE ||
             next == State::SPIN_180) {
             last_line_valid_time = Clock::now();
+        }
+        // Reset first-seen flag when re-entering search so a second pass
+        // also waits for the first valid line before loss-checking.
+        if (next == State::FOLLOW_LINE_SEARCH) {
+            line_ever_seen = false;
         }
         current     = next;
         state_start = Clock::now();
@@ -249,10 +258,13 @@ void fsm_thread(SharedState& state) {
             ctx.transition(State::FAILSAFE_STOP);
         }
 
-        // Line loss check (same states as ROS2 version)
+        // Line loss check. In FOLLOW_LINE_SEARCH, suppress until the first
+        // valid line is received — vision startup can take a few seconds.
+        if (ctx.line.valid) ctx.line_ever_seen = true;
+
         bool check_line = (ctx.current == State::FOLLOW_LINE_SEARCH ||
                            ctx.current == State::RETURN_FOLLOW_LINE);
-        if (check_line) {
+        if (check_line && (ctx.line_ever_seen || ctx.current == State::RETURN_FOLLOW_LINE)) {
             double line_loss = duration_cast<duration<double>>(
                 Clock::now() - ctx.last_line_valid_time).count();
             if (line_loss > LINE_LOSS_TIMEOUT_S) {

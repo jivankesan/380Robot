@@ -26,6 +26,7 @@ Usage:
 
 import math
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -101,8 +102,38 @@ class VisionSocket:
             pass  # C++ side may not be ready yet; just drop
 
 # ── Capture thread ────────────────────────────────────────────────────────────
+# Two implementations:
+#   capture_thread_picam – rpicam-vid pipe (Pi camera, never blocks on open)
+#   capture_thread_cv    – OpenCV VideoCapture (MJPEG URLs / generic sources)
 
-def capture_thread(cap: cv2.VideoCapture, buf: FrameBuffer, stop: threading.Event):
+def capture_thread_picam(buf: FrameBuffer, stop: threading.Event):
+    frame_bytes = CAM_W * CAM_H * 3 // 2  # YUV420 = W*H*1.5 bytes per frame
+    cmd = [
+        'rpicam-vid',
+        '--width',     str(CAM_W),
+        '--height',    str(CAM_H),
+        '--framerate', str(CAM_FPS),
+        '--codec',     'yuv420',
+        '--nopreview',
+        '-t', '0',   # run indefinitely
+        '-o', '-',   # stdout
+    ]
+    print(f"[capture] rpicam-vid {CAM_W}x{CAM_H}@{CAM_FPS}fps → YUV420 pipe")
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    try:
+        while not stop.is_set():
+            raw = proc.stdout.read(frame_bytes)
+            if len(raw) < frame_bytes:
+                print("[capture] rpicam-vid pipe closed")
+                break
+            yuv = np.frombuffer(raw, dtype=np.uint8).reshape((CAM_H * 3 // 2, CAM_W))
+            buf.put(cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_I420))
+    finally:
+        proc.terminate()
+        proc.wait()
+
+
+def capture_thread_cv(cap: cv2.VideoCapture, buf: FrameBuffer, stop: threading.Event):
     while not stop.is_set():
         ret, frame = cap.read()
         if ret:
@@ -256,52 +287,29 @@ def main():
     except ValueError:
         pass
 
-    # For Pi camera (integer index): use libcamerasrc GStreamer pipeline.
-    # Verify OpenCV was built with GStreamer support before we try to use it.
-    build_info = cv2.getBuildInformation()
-    if "GStreamer:                   YES" not in build_info:
-        print("[vision] ERROR: OpenCV was built without GStreamer support.")
-        print("         Install opencv with GStreamer: sudo apt install python3-opencv")
-        print("         Or check: python3 -c \"import cv2; print(cv2.getBuildInformation())\"")
-        sys.exit(1)
-
-    # Pi camera (integer index) → libcamerasrc GStreamer pipeline
-    # URL / MJPEG stream        → VideoCapture directly
-    if isinstance(camera_src, int):
-        # format=NV12 forces PiSP ISP to run (without it, raw Bayer is selected).
-        # queue elements decouple the pipeline stages so libcamerasrc can keep
-        # producing frames while videoconvert/appsink are processing.
-        # emit-signals=true + sync=false ensure OpenCV's cap.read() returns
-        # immediately with the latest frame rather than blocking.
-        pipeline = (
-            f"libcamerasrc ! "
-            f"video/x-raw,format=NV12,width={CAM_W},height={CAM_H},framerate={CAM_FPS}/1 ! "
-            f"queue max-size-buffers=2 leaky=downstream ! "
-            f"videoconvert ! "
-            f"video/x-raw,format=BGR ! "
-            f"queue max-size-buffers=2 leaky=downstream ! "
-            f"appsink emit-signals=true max-buffers=1 drop=true sync=false"
-        )
-        print(f"[vision] opening Pi camera via GStreamer/libcamerasrc "
-              f"({CAM_W}x{CAM_H} @ {CAM_FPS}fps, NV12→BGR)")
-        cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-    else:
-        print(f"[vision] opening stream: {camera_src}")
-        cap = cv2.VideoCapture(camera_src)
-
-    if not cap.isOpened():
-        print("[vision] ERROR: could not open camera. Check libcamerasrc is installed:")
-        print("         sudo apt install gstreamer1.0-libcamera")
-        sys.exit(1)
-
     buf  = FrameBuffer()
     sock = VisionSocket()
     stop = threading.Event()
 
+    # Pi camera (integer index) → rpicam-vid pipe (no blocking open, no GStreamer deps)
+    # URL / MJPEG stream        → OpenCV VideoCapture
+    if isinstance(camera_src, int):
+        cap = None
+        cap_t = threading.Thread(target=capture_thread_picam, args=(buf, stop),
+                                 daemon=True, name="capture")
+    else:
+        print(f"[vision] opening stream: {camera_src}")
+        cap = cv2.VideoCapture(camera_src)
+        if not cap.isOpened():
+            print(f"[vision] ERROR: could not open {camera_src}")
+            sys.exit(1)
+        cap_t = threading.Thread(target=capture_thread_cv, args=(cap, buf, stop),
+                                 daemon=True, name="capture")
+
     threads = [
-        threading.Thread(target=capture_thread, args=(cap, buf, stop), daemon=True, name="capture"),
-        threading.Thread(target=line_thread,    args=(buf, sock, stop), daemon=True, name="line"),
-        threading.Thread(target=object_thread,  args=(buf, sock, stop), daemon=True, name="object"),
+        cap_t,
+        threading.Thread(target=line_thread,   args=(buf, sock, stop), daemon=True, name="line"),
+        threading.Thread(target=object_thread, args=(buf, sock, stop), daemon=True, name="object"),
     ]
 
     for t in threads:
@@ -317,7 +325,8 @@ def main():
         stop.set()
         for t in threads:
             t.join(timeout=2.0)
-        cap.release()
+        if cap is not None:
+            cap.release()
         print("[vision] stopped")
 
 
