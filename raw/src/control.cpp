@@ -203,7 +203,7 @@ void control_thread(SharedState& state) {
             double omega_left  = v_left  / WHEEL_RADIUS_M;
             double omega_right = v_right / WHEEL_RADIUS_M;
 
-            const double max_wheel_omega = 10.0;  // ~95 RPM
+            const double max_wheel_omega = 20.0;  // ~190 RPM – raised to allow full speed range
             double norm_l = std::clamp(omega_left  / max_wheel_omega, -1.0, 1.0) * LEFT_MOTOR_GAIN;
             double norm_r = std::clamp(omega_right / max_wheel_omega, -1.0, 1.0) * RIGHT_MOTOR_GAIN;
             if (LEFT_REVERSED)  norm_l = -norm_l;
