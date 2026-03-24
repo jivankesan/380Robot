@@ -45,7 +45,7 @@ static constexpr double KP_HEADING = 2.8;
 static constexpr double KD_HEADING = 7.0;
 static constexpr double BASE_SPEED_MPS = 0.95;
 static constexpr double MAX_LIN_VEL_MPS = 0.95;
-static constexpr double MIN_LIN_VEL_MPS = 0.20;
+static constexpr double MIN_LIN_VEL_MPS = 0.15;
 static constexpr double MAX_ANG_VEL_RPS = 2.5;     // was 1.6  – allow sharper corrections
 static constexpr double HEADING_BRAKE_GAIN = 3.8;  // scaled up with BASE_SPEED to keep same turn speed
 static constexpr double TURN_SPEED_GAIN = 9.5;     // scaled up with BASE_SPEED to keep same turn speed
@@ -55,7 +55,7 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
 static constexpr double SP_V_MAX = 0.95;
-static constexpr double SP_V_MIN = 0.20;
+static constexpr double SP_V_MIN = 0.15;
 static constexpr double SP_A_MAX_ACCEL = 5.0;
 static constexpr double SP_A_MAX_DECEL = 35.0;  // very hard braking into turns
 static constexpr double SP_ALPHA_MAX = 6.0;     // angular rate can change faster
