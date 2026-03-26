@@ -3,12 +3,11 @@
 motor_pid_tune.py – Wheel velocity PID step-response tuner.
 
 Runs standalone on the Pi (do NOT run alongside the main robot binary).
-Commands a target wheel speed, reads encoders via pigpio, runs the same
+Commands a target wheel speed, reads encoders via lgpio, runs the same
 feedforward+PID as control.cpp, and plots the full step response.
 
 Requirements:
-    sudo apt install python3-pigpio python3-matplotlib python3-numpy
-    sudo pigpiod        # start pigpio daemon before running
+    sudo apt install python3-lgpio python3-matplotlib python3-numpy python3-serial
 
 Usage:
     python3 motor_pid_tune.py [options]
@@ -30,7 +29,7 @@ import time
 import sys
 import csv
 
-import pigpio
+import lgpio
 import serial
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,7 +43,8 @@ MAX_PWM               = 255
 MIN_PWM               = 30
 MAX_WHEEL_OMEGA       = 10.0   # empirical loaded motor max (rad/s) – same as control.cpp
 
-# Encoder GPIO pins (BCM numbering)
+# Encoder GPIO pins (BCM numbering) and gpiochip (Pi 5 = 4, older Pi = 0)
+GPIOCHIP    = 4
 ENC_LEFT_A  = 17
 ENC_LEFT_B  = 27
 ENC_RIGHT_A = 23
@@ -61,24 +61,22 @@ QEM = [
 # ── Encoder ───────────────────────────────────────────────────────────────────
 
 class QuadratureEncoder:
-    def __init__(self, pi, pin_a, pin_b):
-        self.pi    = pi
+    def __init__(self, handle, pin_a, pin_b):
+        self.h     = handle
         self.pin_a = pin_a
         self.pin_b = pin_b
         self.count = 0
 
-        pi.set_mode(pin_a, pigpio.INPUT)
-        pi.set_mode(pin_b, pigpio.INPUT)
-        pi.set_pull_up_down(pin_a, pigpio.PUD_UP)
-        pi.set_pull_up_down(pin_b, pigpio.PUD_UP)
+        lgpio.gpio_claim_alert(handle, pin_a, lgpio.BOTH_EDGES, lgpio.SET_PULL_UP)
+        lgpio.gpio_claim_alert(handle, pin_b, lgpio.BOTH_EDGES, lgpio.SET_PULL_UP)
 
-        self.prev_ab = (pi.read(pin_a) << 1) | pi.read(pin_b)
-        self._cb_a = pi.callback(pin_a, pigpio.EITHER_EDGE, self._cb)
-        self._cb_b = pi.callback(pin_b, pigpio.EITHER_EDGE, self._cb)
+        self.prev_ab = (lgpio.gpio_read(handle, pin_a) << 1) | lgpio.gpio_read(handle, pin_b)
+        self._cb_a = lgpio.callback(handle, pin_a, lgpio.BOTH_EDGES, self._cb)
+        self._cb_b = lgpio.callback(handle, pin_b, lgpio.BOTH_EDGES, self._cb)
 
-    def _cb(self, gpio, level, tick):
-        a = level if gpio == self.pin_a else self.pi.read(self.pin_a)
-        b = level if gpio == self.pin_b else self.pi.read(self.pin_b)
+    def _cb(self, chip, gpio, level, tick):
+        a = level if gpio == self.pin_a else lgpio.gpio_read(self.h, self.pin_a)
+        b = level if gpio == self.pin_b else lgpio.gpio_read(self.h, self.pin_b)
         new_ab = (a << 1) | b
         self.count += QEM[(self.prev_ab << 2) | new_ab]
         self.prev_ab = new_ab
@@ -89,6 +87,8 @@ class QuadratureEncoder:
     def cancel(self):
         self._cb_a.cancel()
         self._cb_b.cancel()
+        lgpio.gpio_free(self.h, self.pin_a)
+        lgpio.gpio_free(self.h, self.pin_b)
 
 # ── PID controller (mirrors WheelPID in control.cpp) ─────────────────────────
 
@@ -125,20 +125,20 @@ class WheelPID:
 # ── Step response test ────────────────────────────────────────────────────────
 
 def run_test(args):
-    pi = pigpio.pi()
-    if not pi.connected:
-        sys.exit("ERROR: pigpio daemon not running.\n  Start with:  sudo pigpiod")
+    h = lgpio.gpiochip_open(GPIOCHIP)
+    if h < 0:
+        sys.exit(f"ERROR: cannot open /dev/gpiochip{GPIOCHIP} (lgpio error {h})")
 
     try:
         ser = serial.Serial(args.port, 115200, timeout=0.05)
     except serial.SerialException as e:
-        pi.stop()
+        lgpio.gpiochip_close(h)
         sys.exit(f"ERROR: cannot open {args.port}: {e}")
 
     time.sleep(0.1)  # let serial settle
 
-    enc_l = QuadratureEncoder(pi, ENC_LEFT_A, ENC_LEFT_B)
-    enc_r = QuadratureEncoder(pi, ENC_RIGHT_A, ENC_RIGHT_B)
+    enc_l = QuadratureEncoder(h, ENC_LEFT_A, ENC_LEFT_B)
+    enc_r = QuadratureEncoder(h, ENC_RIGHT_A, ENC_RIGHT_B)
     pid_l = WheelPID(args.kp, args.ki, args.kd, args.i_clamp)
     pid_r = WheelPID(args.kp, args.ki, args.kd, args.i_clamp)
 
@@ -236,7 +236,7 @@ def run_test(args):
         time.sleep(0.05)
         enc_l.cancel()
         enc_r.cancel()
-        pi.stop()
+        lgpio.gpiochip_close(h)
         ser.close()
 
     n = min(idx, n_samples)

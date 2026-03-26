@@ -26,7 +26,7 @@ target_include_directories(robot PRIVATE ${CMAKE_SOURCE_DIR})
 find_package(Threads REQUIRED)
 target_link_libraries(robot PRIVATE Threads::Threads)
 
-# pigpio (must be installed on the Pi: sudo apt install libpigpio-dev)
-target_link_libraries(robot PRIVATE pigpio)
+# lgpio (Pi 5 compatible GPIO: sudo apt install liblgpio-dev)
+target_link_libraries(robot PRIVATE lgpio)
 
 install(TARGETS robot DESTINATION bin)
