@@ -166,6 +166,7 @@ static void send_claw(SharedState& s, ClawMode mode) {
 
 static void handle_init(FsmCtx& ctx, SharedState& state) {
   stop(state);
+  if (!state.start_requested.load()) return;
   if ((ctx.line.valid && ctx.hw_ready) || ctx.state_elapsed() > 10.0) {
     std::cout << "[fsm] systems ready, starting mission\n";
     ctx.transition(State::FOLLOW_LINE_SEARCH);
