@@ -42,17 +42,17 @@ static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 // arrive earlier. Gains raised accordingly; KD raised for damping to prevent
 // overshoot from acting on predicted-future error rather than current error.
 static constexpr double CONTROL_RATE_HZ = 100.0;
-static constexpr double KP_LATERAL = 2.8;
-static constexpr double KD_LATERAL = 6.0;
-static constexpr double KP_HEADING = 2.1;
-static constexpr double KD_HEADING = 8.0;
-static constexpr double BASE_SPEED_MPS = 0.95;     // was 0.50  – faster on straights
+static constexpr double KP_LATERAL = 10.6466;  // run 4094
+static constexpr double KD_LATERAL = 2.3055;   // run 4094
+static constexpr double KP_HEADING = 7.1708;   // run 4094
+static constexpr double KD_HEADING = 1.6282;   // run 4094
+static constexpr double BASE_SPEED_MPS = 0.9350;   // run 4094
 static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
-static constexpr double MAX_ANG_VEL_RPS = 2.5;     // was 1.6  – allow sharper corrections
-static constexpr double HEADING_BRAKE_GAIN = 3.5;  // was 2.0  – absorbs +0.45 m/s BASE delta in turns
-static constexpr double TURN_SPEED_GAIN = 8.0;     // was 5.0  – absorbs +0.45 m/s BASE delta in turns
-static constexpr double MIN_TURN_SPEED_MPS = 0.12;
+static constexpr double MAX_ANG_VEL_RPS = 8.0938;  // run 4094
+static constexpr double HEADING_BRAKE_GAIN = 0.1388;  // run 4094
+static constexpr double TURN_SPEED_GAIN = 0.0698;     // run 4094
+static constexpr double MIN_TURN_SPEED_MPS = 0.3595;  // run 4094
 static constexpr double TURN_OMEGA_DEADBAND = 0.15;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
@@ -60,11 +60,11 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double SP_V_MIN = 0.1;
 static constexpr double SP_A_MAX_ACCEL = 3.0;
-static constexpr double SP_A_MAX_DECEL = 8.0;  // was 6.0  – brake faster into turns
-static constexpr double SP_ALPHA_MAX = 6.0;    // was 4.0  – angular rate can change faster
-static constexpr double SP_K_CURVATURE = 0.4;  // was 0.3
-static constexpr double SP_K_ERROR = 0.4;      // was 0.3
-static constexpr double SP_K_HEADING = 0.4;    // was 0.3
+static constexpr double SP_A_MAX_DECEL = 13.3127;  // run 4094
+static constexpr double SP_ALPHA_MAX = 14.3185;    // run 4094
+static constexpr double SP_K_CURVATURE = 0.4;
+static constexpr double SP_K_ERROR = 0.4767;    // run 4094
+static constexpr double SP_K_HEADING = 1.1473;  // run 4094
 
 // ── Safety ───────────────────────────────────────────────────────────────────
 static constexpr double SAFETY_CMD_TIMEOUT_S = 0.5;
