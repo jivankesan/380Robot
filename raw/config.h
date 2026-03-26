@@ -42,29 +42,29 @@ static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 // Inner wheel can now go negative (opposite-direction motors), so omega can
 // be larger without losing the inner wheel at zero.
 static constexpr double CONTROL_RATE_HZ = 100.0;
-static constexpr double KP_LATERAL = 0.8;
-static constexpr double KD_LATERAL = 0.0;
-static constexpr double KP_HEADING = 1.1;
-static constexpr double KD_HEADING = 2.0;
-static constexpr double BASE_SPEED_MPS = 0.20;
-static constexpr double MAX_LIN_VEL_MPS = 0.5;
+static constexpr double KP_LATERAL = 10.647;
+static constexpr double KD_LATERAL = 2.305;
+static constexpr double KP_HEADING = 7.171;
+static constexpr double KD_HEADING = 1.628;
+static constexpr double BASE_SPEED_MPS = 0.935;
+static constexpr double MAX_LIN_VEL_MPS = 0.935;
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
-static constexpr double MAX_ANG_VEL_RPS = 1.8;
-static constexpr double HEADING_BRAKE_GAIN = 1.2;
-static constexpr double TURN_SPEED_GAIN = 2.5;
-static constexpr double MIN_TURN_SPEED_MPS = 0.10;
+static constexpr double MAX_ANG_VEL_RPS = 8.094;
+static constexpr double HEADING_BRAKE_GAIN = 0.139;
+static constexpr double TURN_SPEED_GAIN = 0.070;
+static constexpr double MIN_TURN_SPEED_MPS = 0.359;
 static constexpr double TURN_OMEGA_DEADBAND = 0.15;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
-static constexpr double SP_V_MAX = 0.35;
+static constexpr double SP_V_MAX = 0.935;
 static constexpr double SP_V_MIN = 0.10;
 static constexpr double SP_A_MAX_ACCEL = 2.0;
-static constexpr double SP_A_MAX_DECEL = 6.0;
-static constexpr double SP_ALPHA_MAX = 3.0;  // slower omega ramp reduces oscillation
+static constexpr double SP_A_MAX_DECEL = 13.313;
+static constexpr double SP_ALPHA_MAX = 14.318;
 static constexpr double SP_K_CURVATURE = 0.3;
-static constexpr double SP_K_ERROR = 0.3;
-static constexpr double SP_K_HEADING = 0.3;
+static constexpr double SP_K_ERROR = 0.477;
+static constexpr double SP_K_HEADING = 1.147;
 
 // ── Safety ───────────────────────────────────────────────────────────────────
 static constexpr double SAFETY_CMD_TIMEOUT_S = 0.5;
