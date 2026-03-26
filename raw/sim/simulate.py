@@ -27,7 +27,8 @@ from matplotlib.gridspec import GridSpec
 #   Total I_yaw ≈ 0.003 kg·m²
 ROBOT_MASS  = 0.500   # kg
 ROBOT_I_YAW = 0.003   # kg·m²
-MOTOR_F_MAX = 2.0     # N per wheel
+MOTOR_F_MAX = 6.0     # N per wheel
+# ^ calibrated for 210 RPM motors on 7.4V 2S LiPo; stall torque ≈ 0.3 N·m → 6 N at r=0.048 m
 
 # Track geometry
 R_TURN = 0.15   # turn arc radius (m)
@@ -40,6 +41,13 @@ LOOK_FAR  = 0.20
 LOOK_MID  = (LOOK_NEAR + LOOK_FAR) / 2
 LOOK_SPAN = LOOK_FAR - LOOK_NEAR
 
+# Heading error denominator — must match vision.py's pixel-space computation.
+# vision.py: heading = arctan2(cx_top - cx_bot, mid_y)
+#   ROI y: 10–60% of 480px frame → roi_h = 240 px, mid_y = 120 px
+#   LINE_PIXELS_TO_M = 0.001 m/px → physical depth = 120 * 0.001 = 0.12 m
+# Using LOOK_SPAN/2 = 0.05 m would make heading errors 2.4× too large.
+HEADING_DENOM = 0.12  # m  (matches vision.py mid_y in physical units)
+
 # Detection fails if the centroid lateral offset exceeds this (~80% of half-tile-width)
 DETECTION_LAT_LIMIT = 0.12   # m
 
@@ -50,20 +58,22 @@ IDX_MID  = round(LOOK_MID  * _SPM)
 IDX_FAR  = round(LOOK_FAR  * _SPM)
 
 DEFAULT_PARAMS = {
+    # ── PD controller ── (matches config.h exactly)
     'KP_LAT': 2.5,   'KD_LAT': 6.0,
-    'KP_HDG': 1.8,   'KD_HDG': 7.0,
-    'BASE_SPEED':         0.80,
+    'KP_HDG': 1.8,   'KD_HDG': 8.0,        # config.h: KD_HEADING = 8.0
+    'BASE_SPEED':         0.50,              # config.h: BASE_SPEED_MPS = 0.50
     'MAX_LIN_VEL':        1.056,
-    'MIN_TURN_SPEED':     0.10,
-    'MAX_ANG_VEL':        6.0,
+    'MIN_TURN_SPEED':     0.12,              # config.h: MIN_TURN_SPEED_MPS = 0.12
+    'MAX_ANG_VEL':        2.5,              # config.h: MAX_ANG_VEL_RPS = 2.5
     'HEADING_BRAKE_GAIN': 2.0,
     'TURN_SPEED_GAIN':    5.0,
     'TURN_OMEGA_DEADBAND':0.15,
+    # ── Speed profiler ── (matches config.h exactly)
     'SP_V_MAX':       1.056,
-    'SP_V_MIN':       0.08,
-    'SP_A_MAX_ACCEL': 4.0,
-    'SP_A_MAX_DECEL': 10.0,
-    'SP_ALPHA_MAX':   10.0,
+    'SP_V_MIN':       0.10,                 # config.h: SP_V_MIN = 0.1
+    'SP_A_MAX_ACCEL': 3.0,                  # config.h: SP_A_MAX_ACCEL = 3.0
+    'SP_A_MAX_DECEL': 8.0,                  # config.h: SP_A_MAX_DECEL = 8.0
+    'SP_ALPHA_MAX':   6.0,                  # config.h: SP_ALPHA_MAX = 6.0
     'SP_K_CURVATURE': 0.4,
     'SP_K_ERROR':     0.4,
     'SP_K_HEADING':   0.4,
@@ -133,7 +143,24 @@ def build_course():
     return tb.build()
 
 
-def compute_errors(rx, ry, rh, track_pts, prog_idx):
+def precompute_curvature(track_pts):
+    """
+    Compute signed curvature (1/m) at every track point.
+    κ = dθ/ds, estimated via finite differences of the heading angle.
+    Positive = turning left (counter-clockwise), matching vision.py convention.
+    """
+    dx = np.gradient(track_pts[:, 0])
+    dy = np.gradient(track_pts[:, 1])
+    ds = np.sqrt(dx**2 + dy**2)
+    headings = np.arctan2(dy, dx)
+    # unwrap to avoid jumps at ±π
+    headings = np.unwrap(headings)
+    dh = np.gradient(headings)
+    curvature = dh / np.where(ds > 1e-9, ds, 1e-9)
+    return curvature
+
+
+def compute_errors(rx, ry, rh, track_pts, track_curv, prog_idx):
     """
     Simulate camera line-detection output.
 
@@ -142,14 +169,14 @@ def compute_errors(rx, ry, rh, track_pts, prog_idx):
     arc before the robot physically reaches the tile seam).
 
     Mirrors the two-half centroid logic in vision.py.
-    Returns (e_lat [m], e_hdg [rad], valid).
+    Returns (e_lat [m], e_hdg [rad], curvature [1/m], valid).
     """
     i_near = prog_idx + IDX_NEAR
     i_mid  = prog_idx + IDX_MID
     i_far  = prog_idx + IDX_FAR
 
     if i_far >= len(track_pts):
-        return 0.0, 0.0, False
+        return 0.0, 0.0, 0.0, False
 
     right     = np.array([ np.sin(rh), -np.cos(rh)])
     robot_pos = np.array([rx, ry])
@@ -161,11 +188,16 @@ def compute_errors(rx, ry, rh, track_pts, prog_idx):
     e_lat = float(np.mean(lat_roi))
 
     if abs(e_lat) > DETECTION_LAT_LIMIT:
-        return 0.0, 0.0, False
+        return 0.0, 0.0, 0.0, False
 
-    e_hdg = float(np.arctan2(np.mean(lat_far) - np.mean(lat_near), LOOK_SPAN / 2))
+    e_hdg = float(np.arctan2(np.mean(lat_far) - np.mean(lat_near), HEADING_DENOM))
 
-    return e_lat, e_hdg, True
+    # vision.py always sends curvature = 0.0 (see vision.py line 192: "...0.0")
+    # The real speed profiler therefore never uses SP_K_CURVATURE.
+    # track_curv is kept for diagnostics/visualization only.
+    curv = 0.0
+
+    return e_lat, e_hdg, curv, True
 
 
 class PDController:
@@ -202,10 +234,11 @@ class SpeedProfiler:
     def reset(self):
         self.v_cmd = self.omega_cmd = 0.0
 
-    def step(self, v_raw, omega_raw, e_lat, e_hdg, p, dt):
+    def step(self, v_raw, omega_raw, e_lat, e_hdg, curv, p, dt):
         v_target = (p['SP_V_MAX']
-                    - p['SP_K_ERROR']   * abs(e_lat)
-                    - p['SP_K_HEADING'] * abs(e_hdg))
+                    - p['SP_K_CURVATURE'] * abs(curv)
+                    - p['SP_K_ERROR']     * abs(e_lat)
+                    - p['SP_K_HEADING']   * abs(e_hdg))
         v_target = min(v_target, v_raw)
         v_target = float(np.clip(v_target, p['SP_V_MIN'], p['SP_V_MAX']))
 
@@ -285,6 +318,7 @@ def simulate(params=None, max_time=30.0, dt=0.01, crash_limit=0.13):
         p.update(params)
 
     track_pts, joints, tile_types = build_course()
+    track_curv = precompute_curvature(track_pts)
 
     tx0, ty0, th_end = joints[-2]
     target = np.array([tx0 + 0.15 * np.cos(th_end),
@@ -318,7 +352,7 @@ def simulate(params=None, max_time=30.0, dt=0.01, crash_limit=0.13):
             print(f"[sim] COMPLETE  lap_time={t:.3f}s")
             return t, hist, max_prog_idx
 
-        e_lat, e_hdg, valid = compute_errors(rx, ry, rh, track_pts, prog_idx)
+        e_lat, e_hdg, curv, valid = compute_errors(rx, ry, rh, track_pts, track_curv, prog_idx)
 
         if valid:
             lost_line_since = None
@@ -335,7 +369,7 @@ def simulate(params=None, max_time=30.0, dt=0.01, crash_limit=0.13):
                 continue
 
         v_raw,  omega_raw  = pd.step(e_lat, e_hdg, p, dt)
-        v_prof, omega_prof = prof.step(v_raw, omega_raw, e_lat, e_hdg, p, dt)
+        v_prof, omega_prof = prof.step(v_raw, omega_raw, e_lat, e_hdg, curv, p, dt)
         v_act,  omega_act  = plant.step(v_prof, omega_prof, dt)
 
         hist['t'].append(t);         hist['x'].append(rx);      hist['y'].append(ry)
@@ -351,7 +385,7 @@ def simulate(params=None, max_time=30.0, dt=0.01, crash_limit=0.13):
     return None, hist, max_prog_idx
 
 
-def plot_run(history, title="Simulation run", save_path='sim_result.png', show=True):
+def plot_run(history, title="Simulation run", save_path='sim_result.png', show=True, params=None):
     track_pts, joints, tile_types = build_course()
 
     tx0, ty0, th_end = joints[-2]
@@ -417,7 +451,10 @@ def plot_run(history, title="Simulation run", save_path='sim_result.png', show=T
 
     ax_v.plot(t, v_arr, color='#e05c00', lw=1.5)
     ax_v.set_ylabel('Speed (m/s)'); ax_v.set_ylim(0, 1.1)
-    ax_v.axhline(DEFAULT_PARAMS['BASE_SPEED'], ls='--', color='grey', lw=0.8, label='base')
+    _p = DEFAULT_PARAMS.copy()
+    if params:
+        _p.update(params)
+    ax_v.axhline(_p['BASE_SPEED'], ls='--', color='grey', lw=0.8, label='base')
     ax_v.legend(fontsize=8); ax_v.grid(True, alpha=0.3)
 
     ax_e.plot(t, np.array(el_arr) * 100, color='red',  lw=1.2, label='e_lat (cm)')
@@ -476,4 +513,5 @@ if __name__ == '__main__':
         print("\n  Did not complete the course.")
 
     plot_run(history, title=f"Line-follow sim  –  lap = "
-             + (f"{lap_time:.2f} s" if lap_time else "DNF"))
+             + (f"{lap_time:.2f} s" if lap_time else "DNF"),
+             params=params)
