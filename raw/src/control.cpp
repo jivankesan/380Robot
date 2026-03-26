@@ -173,8 +173,8 @@ void control_thread(SharedState& state) {
                 (int)(std::abs(omega_cmd) / 1.5 * SPIN_PWM),
                 SPIN_MIN_PWM, SPIN_PWM);
 
-            pwm_l = -dir * eff_pwm;
-            pwm_r =  dir * eff_pwm;
+            pwm_l =  dir * eff_pwm;
+            pwm_r = -dir * eff_pwm;
 
             if (LEFT_REVERSED)  pwm_l = -pwm_l;
             if (RIGHT_REVERSED) pwm_r = -pwm_r;
