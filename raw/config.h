@@ -52,7 +52,7 @@ static constexpr double MIN_LIN_VEL_MPS = 0.08;
 static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper corrections
 static constexpr double HEADING_BRAKE_GAIN = 1.5;
 static constexpr double TURN_SPEED_GAIN = 3.7;
-static constexpr double MIN_TURN_SPEED_MPS = 0.12;
+static constexpr double MIN_TURN_SPEED_MPS = 0.2;
 static constexpr double TURN_OMEGA_DEADBAND = 0.1;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
@@ -84,7 +84,7 @@ static constexpr double GREEN_ROI_Y_END = 0.70;  // top 70% – box spans past h
 
 // ── FSM ──────────────────────────────────────────────────────────────────────
 static constexpr double FSM_RATE_HZ = 20.0;
-static constexpr double PICKUP_DRIVE_TIME_S = 0.24;     // drive forward after blue seen
+static constexpr double PICKUP_DRIVE_TIME_S = 0.28;     // drive forward after blue seen
 static constexpr double PICKUP_DRIVE_SPEED_MPS = 0.15;  // slow creep toward target
 static constexpr double PICKUP_CLOSE_TIME_S = 0.1;
 static constexpr double PICKUP_ROTATE_TIME_S = 0.1;
