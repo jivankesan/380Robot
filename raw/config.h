@@ -40,10 +40,10 @@ static constexpr double ENCODER_TICKS_PER_REV = 682.4;  // 341.2 PPR × 2 edges
 
 // ── Wheel velocity PID ────────────────────────────────────────────────────────
 // Output is in PWM units. Feedforward handles steady-state; PID corrects error.
-static constexpr double MOTOR_KP     = 20.0;  // PWM / (rad/s)
-static constexpr double MOTOR_KI     = 5.0;   // PWM / (rad/s·s)
-static constexpr double MOTOR_KD     = 0.1;   // PWM / (rad/s²)
-static constexpr double MOTOR_I_CLAMP = 4.0;  // integral state clamp (rad)
+static constexpr double MOTOR_KP      = 3.8;  // PWM / (rad/s)
+static constexpr double MOTOR_KI      = 1.1;  // PWM / (rad/s·s)
+static constexpr double MOTOR_KD      = 0.1;  // PWM / (rad/s²)
+static constexpr double MOTOR_I_CLAMP = 1.0;  // integral state clamp (rad)
 
 // Servo angles (sent as C,<servo_num>,<angle>\n to Arduino)
 static constexpr int SERVO1_HOME = 5;      // rotation arm: horizontal/resting
