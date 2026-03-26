@@ -35,11 +35,11 @@ const int BATTERY_PIN = A0;
 const int ESTOP_PIN = -1;
 
 // Servo 2 (gripper) angles
-const int CLAW_OPEN_POS = 50;
-const int CLAW_CLOSED_POS = 130;
+const int CLAW_OPEN_POS = 55;
+const int CLAW_CLOSED_POS = 140;
 
 // Servo 1 (rotation) angles
-const int CLAW_HORIZONTAL_POS = 20;
+const int CLAW_HORIZONTAL_POS = 5;
 const int CLAW_ROTATED_POS = 90;
 
 // Watchdog timeout (ms)
