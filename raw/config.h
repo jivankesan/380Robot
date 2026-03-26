@@ -59,9 +59,9 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 // ── Speed profiler ───────────────────────────────────────────────────────────
 static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double SP_V_MIN = 0.1;
-static constexpr double SP_A_MAX_ACCEL = 9.9;
-static constexpr double SP_A_MAX_DECEL = 18.5;  // was 6.0  – brake faster into turns
-static constexpr double SP_ALPHA_MAX = 8.9;     // was 4.0  – angular rate can change faster
+static constexpr double SP_A_MAX_ACCEL = 3.0;   // was 9.9 – lower to prevent straight-line jerk
+static constexpr double SP_A_MAX_DECEL = 10.0;  // was 18.5 – still hard corner braking, less over-current
+static constexpr double SP_ALPHA_MAX = 5.0;     // was 8.9 – smoother steering transitions
 static constexpr double SP_K_CURVATURE = 0.8;   // was 0.3
 static constexpr double SP_K_ERROR = 0.4;       // was 0.3
 static constexpr double SP_K_HEADING = 0.4;     // was 0.3
