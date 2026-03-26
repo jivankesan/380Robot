@@ -52,7 +52,7 @@ static constexpr double MIN_LIN_VEL_MPS = 0.08;
 static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper corrections
 static constexpr double HEADING_BRAKE_GAIN = 1.5;
 static constexpr double TURN_SPEED_GAIN = 3.7;
-static constexpr double MIN_TURN_SPEED_MPS = 0.12;
+static constexpr double MIN_TURN_SPEED_MPS = 0.15;
 static constexpr double TURN_OMEGA_DEADBAND = 0.1;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
