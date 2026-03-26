@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -62,6 +63,36 @@ struct FsmCtx {
     // For FINAL_FOLLOW: track when line was last valid to detect line end
     TimePoint last_line_seen_final = Clock::now();
 
+    // ── Mission timer ──────────────────────────────────────────────────────────
+    TimePoint mission_start;
+    bool      mission_running      = false;
+    double    mission_last_print_s = -1.0;
+
+    void start_timer() {
+        mission_start        = Clock::now();
+        mission_running      = true;
+        mission_last_print_s = -1.0;
+        std::cout << "[timer] *** MISSION STARTED ***\n";
+    }
+
+    void stop_timer() {
+        if (!mission_running) return;
+        mission_running  = false;
+        double elapsed = duration_cast<duration<double>>(Clock::now() - mission_start).count();
+        std::cout << "\n[timer] *** DROP COMPLETE – total time: "
+                  << std::fixed << std::setprecision(2) << elapsed << " s ***\n\n";
+    }
+
+    void tick_timer() {
+        if (!mission_running) return;
+        double elapsed = duration_cast<duration<double>>(Clock::now() - mission_start).count();
+        double floored = std::floor(elapsed);
+        if (floored > mission_last_print_s) {
+            mission_last_print_s = floored;
+            std::cout << "[timer] " << std::fixed << std::setprecision(1) << elapsed << " s\n";
+        }
+    }
+
     void transition(State next) {
         if (next == current) return;
         std::cout << "[fsm] " << to_str(current) << " -> " << to_str(next) << "\n";
@@ -72,6 +103,7 @@ struct FsmCtx {
         }
         if (next == State::FOLLOW_LINE_SEARCH) {
             line_ever_seen = false;
+            start_timer();
         }
         if (next == State::FINAL_FOLLOW) {
             last_line_seen_final = Clock::now();
@@ -118,6 +150,7 @@ static void send_claw(SharedState& s, ClawMode mode) {
 
 static void handle_init(FsmCtx& ctx, SharedState& state) {
     stop(state);
+    if (!state.start_requested.load()) return;
     if ((ctx.line.valid && ctx.hw_ready) || ctx.state_elapsed() > 10.0) {
         std::cout << "[fsm] systems ready, starting mission\n";
         ctx.transition(State::FOLLOW_LINE_SEARCH);
@@ -253,7 +286,9 @@ static void handle_drop(FsmCtx& ctx, SharedState& state) {
         send_claw(state, ClawMode::OPEN);
     } else {
         last_log = -1.0;
-        std::cout << "[fsm] drop complete – finding line\n";
+        state.post_drop_mode.store(true);
+        ctx.stop_timer();
+        std::cout << "[fsm] drop complete – switching to safe params, finding line\n";
         ctx.transition(State::FIND_LINE);
     }
 }
@@ -348,6 +383,8 @@ void fsm_thread(SharedState& state) {
                 ctx.transition(State::FAILSAFE_STOP);
             }
         }
+
+        ctx.tick_timer();
 
         // ── Dispatch ────────────────────────────────────────────────────────
         switch (ctx.current) {

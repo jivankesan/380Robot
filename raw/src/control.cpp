@@ -60,6 +60,17 @@ void control_thread(SharedState& state) {
             direct_r     = state.direct_pwm_right;
         }
 
+        const bool safe = state.post_drop_mode.load();
+        const double p_base_speed      = safe ? BASE_SPEED_MPS_SAFE      : BASE_SPEED_MPS;
+        const double p_heading_brake   = safe ? HEADING_BRAKE_GAIN_SAFE  : HEADING_BRAKE_GAIN;
+        const double p_turn_speed_gain = safe ? TURN_SPEED_GAIN_SAFE     : TURN_SPEED_GAIN;
+        const double p_turn_deadband   = safe ? TURN_OMEGA_DEADBAND_SAFE : TURN_OMEGA_DEADBAND;
+        const double p_right_gain      = safe ? RIGHT_MOTOR_GAIN_SAFE    : RIGHT_MOTOR_GAIN;
+        const double p_accel           = safe ? SP_A_MAX_ACCEL_SAFE      : SP_A_MAX_ACCEL;
+        const double p_decel           = safe ? SP_A_MAX_DECEL_SAFE      : SP_A_MAX_DECEL;
+        const double p_alpha           = safe ? SP_ALPHA_MAX_SAFE        : SP_ALPHA_MAX;
+        const double p_k_curv          = safe ? SP_K_CURVATURE_SAFE      : SP_K_CURVATURE;
+
         // ── Safety checks ────────────────────────────────────────────────────
         bool hw_timeout  = duration_cast<duration<double>>(Clock::now() - hw.timestamp).count()
                            > SAFETY_HW_TIMEOUT_S;
@@ -116,9 +127,9 @@ void control_thread(SharedState& state) {
                           + KP_HEADING * hdg + KD_HEADING * d_hdg;
                 raw_omega = std::clamp(raw_omega, -MAX_ANG_VEL_RPS, MAX_ANG_VEL_RPS);
 
-                double excess = std::max(0.0, std::abs(raw_omega) - TURN_OMEGA_DEADBAND);
-                double brake  = HEADING_BRAKE_GAIN * std::abs(hdg);
-                raw_v = BASE_SPEED_MPS - brake - TURN_SPEED_GAIN * excess;
+                double excess = std::max(0.0, std::abs(raw_omega) - p_turn_deadband);
+                double brake  = p_heading_brake * std::abs(hdg);
+                raw_v = p_base_speed - brake - p_turn_speed_gain * excess;
                 raw_v = std::clamp(raw_v, MIN_TURN_SPEED_MPS, MAX_LIN_VEL_MPS);
 
                 last_lateral = lat;
@@ -147,20 +158,20 @@ void control_thread(SharedState& state) {
                 double lerr = std::abs(line.lateral_error_m);
                 double herr = std::abs(line.heading_error_rad);
                 v_target = SP_V_MAX
-                         - SP_K_CURVATURE * curv
-                         - SP_K_ERROR     * lerr
-                         - SP_K_HEADING   * herr;
+                         - p_k_curv     * curv
+                         - SP_K_ERROR   * lerr
+                         - SP_K_HEADING * herr;
             }
 
             if (raw_v < v_target) v_target = raw_v;
             v_target = std::clamp(v_target, SP_V_MIN, SP_V_MAX);
 
-            double a_lim = (v_target < v_cmd) ? SP_A_MAX_DECEL : SP_A_MAX_ACCEL;
+            double a_lim = (v_target < v_cmd) ? p_decel : p_accel;
             double dv    = std::clamp(v_target - v_cmd, -a_lim * dt, a_lim * dt);
             v_cmd = std::clamp(v_cmd + dv, 0.0, SP_V_MAX);
 
             double domega = std::clamp(raw_omega - omega_cmd,
-                                       -SP_ALPHA_MAX * dt, SP_ALPHA_MAX * dt);
+                                       -p_alpha * dt, p_alpha * dt);
             omega_cmd += domega;
 
             if (raw_v == 0.0) v_cmd = 0.0;
@@ -205,7 +216,7 @@ void control_thread(SharedState& state) {
 
             const double max_wheel_omega = 10.0;  // ~95 RPM
             double norm_l = std::clamp(omega_left  / max_wheel_omega, -1.0, 1.0) * LEFT_MOTOR_GAIN;
-            double norm_r = std::clamp(omega_right / max_wheel_omega, -1.0, 1.0) * RIGHT_MOTOR_GAIN;
+            double norm_r = std::clamp(omega_right / max_wheel_omega, -1.0, 1.0) * p_right_gain;
             if (LEFT_REVERSED)  norm_l = -norm_l;
             if (RIGHT_REVERSED) norm_r = -norm_r;
 

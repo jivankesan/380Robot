@@ -105,4 +105,10 @@ struct SharedState {
 
     // Shutdown signal
     std::atomic<bool> shutdown{false};
+
+    // Set true by FSM when drop completes; switches control to safe params
+    std::atomic<bool> post_drop_mode{false};
+
+    // Set true by main thread when operator presses W; gates FSM start
+    std::atomic<bool> start_requested{false};
 };
