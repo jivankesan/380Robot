@@ -138,10 +138,6 @@ void serial_thread(SharedState& state) {
     std::string read_buf;
     char raw[256];
 
-    // Pure-spin alternation state (mirrors SerialBridgeNode)
-    bool spin_toggle    = false;
-    int  spin_tick_cnt  = 0;
-
     while (!state.shutdown.load()) {
         // ── read incoming telemetry ──────────────────────────────────────
         if (fd >= 0) {
@@ -180,20 +176,6 @@ void serial_thread(SharedState& state) {
 
             // Handle claw
             if (claw_pending) apply_claw(fd, claw);
-
-            // Handle pure-spin alternation (same logic as SerialBridgeNode)
-            // pwm_l == 0 && pwm_r == 0 but the ControlThread encodes a spin
-            // request as a special convention: when ControlMode::MANUAL and
-            // linear≈0, angular≠0 the ControlThread sets motor_pwm_* to the
-            // raw spin values with alternation flags encoded in sign—but
-            // actually it's cleaner to re-derive here from cmd_v/cmd_omega
-            // since the serial thread owns the spin toggle state.
-            //
-            // Approach: ControlThread writes motor_pwm_* = INT32_MIN as a
-            // sentinel for "pure spin; derive here". But that's fragile.
-            // Instead: ControlThread always writes the final pwm values.
-            // The spin alternation logic lives in ControlThread (see control.cpp).
-            // Here we just send whatever was computed.
 
             send_motor(fd, pwm_l, pwm_r);
         }

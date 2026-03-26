@@ -32,10 +32,6 @@ void control_thread(SharedState& state) {
     TimePoint last_cmd_received   = Clock::now();  // updated any time we have a non-zero cmd
     TimePoint last_hw_status_time = Clock::now();
 
-    // ── Spin alternation state (pure-spin mode) ───────────────────────────────
-    bool spin_toggle   = false;
-    int  spin_tick_cnt = 0;
-
     while (!state.shutdown.load()) {
         std::this_thread::sleep_until(next_tick);
         next_tick += period;
@@ -170,33 +166,19 @@ void control_thread(SharedState& state) {
         int pwm_l = 0, pwm_r = 0;
 
         if (std::abs(v_cmd) < 0.01 && std::abs(omega_cmd) > 0.1) {
-            // Pure-spin mode: alternate left/right each SPIN_TICKS ticks
-            // (hardware cannot drive both wheels in opposite directions simultaneously)
+            // Pure-spin: drive wheels in opposite directions simultaneously.
+            // omega > 0 = left/CCW: left wheel back, right wheel forward.
             int dir = (omega_cmd > 0) ? 1 : -1;
             int eff_pwm = std::clamp(
                 (int)(std::abs(omega_cmd) / 1.5 * SPIN_PWM),
                 SPIN_MIN_PWM, SPIN_PWM);
 
-            int left_p  = LEFT_REVERSED  ? (dir * eff_pwm) : (-dir * eff_pwm);
-            int right_p = RIGHT_REVERSED ? (dir * eff_pwm) : (-dir * eff_pwm);
+            pwm_l = -dir * eff_pwm;
+            pwm_r =  dir * eff_pwm;
 
-            if (spin_toggle) {
-                pwm_l = left_p;
-                pwm_r = 0;
-            } else {
-                pwm_l = 0;
-                pwm_r = right_p;
-            }
-
-            spin_tick_cnt++;
-            if (spin_tick_cnt >= SPIN_TICKS) {
-                spin_toggle = !spin_toggle;
-                spin_tick_cnt = 0;
-            }
+            if (LEFT_REVERSED)  pwm_l = -pwm_l;
+            if (RIGHT_REVERSED) pwm_r = -pwm_r;
         } else {
-            spin_toggle   = false;
-            spin_tick_cnt = 0;
-
             double v_left  = v_cmd - omega_cmd * WHEEL_BASE_M / 2.0;
             double v_right = v_cmd + omega_cmd * WHEEL_BASE_M / 2.0;
 

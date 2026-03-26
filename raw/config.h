@@ -23,7 +23,6 @@ static constexpr int MAX_PWM = 255;
 static constexpr int MIN_PWM = 30;       // deadband override
 static constexpr int SPIN_PWM = 150;     // full-spin PWM
 static constexpr int SPIN_MIN_PWM = 40;  // minimum spin PWM
-static constexpr int SPIN_TICKS = 5;  // ticks per side before alternating (at 50 Hz = 100 ms/side)
 
 // Motor calibration – reduce the gain of the faster wheel until both match
 static constexpr double LEFT_MOTOR_GAIN = 1.0;
