@@ -34,11 +34,9 @@ static constexpr bool RIGHT_REVERSED = false;
 // ── Encoder (Pi GPIO, BCM numbering) ─────────────────────────────────────────
 // Pi 5 uses /dev/gpiochip4; earlier Pis use /dev/gpiochip0
 static constexpr int GPIOCHIP    = 4;
-static constexpr int ENC_LEFT_A  = 27;
-static constexpr int ENC_LEFT_B  = 17;
-static constexpr int ENC_RIGHT_A = 24;
-static constexpr int ENC_RIGHT_B = 23;
-static constexpr double ENCODER_TICKS_PER_REV = 1364.8; // 341.2 PPR × 4 (4x quadrature)
+static constexpr int ENC_LEFT    = 27;   // single channel, both edges
+static constexpr int ENC_RIGHT   = 24;   // single channel, both edges
+static constexpr double ENCODER_TICKS_PER_REV = 682.4;  // 341.2 PPR × 2 edges
 
 // ── Wheel velocity PID ────────────────────────────────────────────────────────
 // Output is in PWM units. Feedforward handles steady-state; PID corrects error.

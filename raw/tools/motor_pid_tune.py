@@ -37,58 +37,37 @@ import matplotlib.gridspec as gridspec
 
 # ── Constants – must match config.h ──────────────────────────────────────────
 WHEEL_RADIUS_M        = 0.048
-ENCODER_TICKS_PER_REV = 1364.8  # 341.2 PPR × 4 (4x quadrature)
+ENCODER_TICKS_PER_REV = 682.4   # 341.2 PPR × 2 edges (single channel, both edges)
 TICKS_PER_RAD         = ENCODER_TICKS_PER_REV / (2.0 * math.pi)
 MAX_PWM               = 255
 MIN_PWM               = 30
 MAX_WHEEL_OMEGA       = 22.0   # 210 RPM * 2π/60 = 21.99 rad/s
 
 # Encoder GPIO pins (BCM numbering) and gpiochip (Pi 5 = 4, older Pi = 0)
-GPIOCHIP    = 4
-ENC_LEFT_A  = 27
-ENC_LEFT_B  = 17
-ENC_RIGHT_A = 24
-ENC_RIGHT_B = 23
-
-# Quadrature decode lookup: index = (prev_AB << 2) | new_AB
-QEM = [
-     0,  1, -1,  0,
-    -1,  0,  0,  1,
-     1,  0,  0, -1,
-     0, -1,  1,  0,
-]
+GPIOCHIP  = 4
+ENC_LEFT  = 27   # single channel
+ENC_RIGHT = 24   # single channel
 
 # ── Encoder ───────────────────────────────────────────────────────────────────
 
-class QuadratureEncoder:
-    def __init__(self, handle, pin_a, pin_b):
+class Encoder:
+    def __init__(self, handle, pin):
         self.h     = handle
-        self.pin_a = pin_a
-        self.pin_b = pin_b
+        self.pin   = pin
         self.count = 0
+        lgpio.gpio_claim_alert(handle, pin, lgpio.BOTH_EDGES, lgpio.SET_PULL_UP)
+        self._cb = lgpio.callback(handle, pin, lgpio.BOTH_EDGES, self._on_edge)
 
-        lgpio.gpio_claim_alert(handle, pin_a, lgpio.BOTH_EDGES, lgpio.SET_PULL_UP)
-        lgpio.gpio_claim_alert(handle, pin_b, lgpio.BOTH_EDGES, lgpio.SET_PULL_UP)
-
-        self.prev_ab = (lgpio.gpio_read(handle, pin_a) << 1) | lgpio.gpio_read(handle, pin_b)
-        self._cb_a = lgpio.callback(handle, pin_a, lgpio.BOTH_EDGES, self._cb)
-        self._cb_b = lgpio.callback(handle, pin_b, lgpio.BOTH_EDGES, self._cb)
-
-    def _cb(self, chip, gpio, level, tick):
-        a = level if gpio == self.pin_a else lgpio.gpio_read(self.h, self.pin_a)
-        b = level if gpio == self.pin_b else lgpio.gpio_read(self.h, self.pin_b)
-        new_ab = (a << 1) | b
-        self.count += QEM[(self.prev_ab << 2) | new_ab]
-        self.prev_ab = new_ab
+    def _on_edge(self, chip, gpio, level, tick):
+        if level < 2:
+            self.count += 1
 
     def get(self):
         return self.count
 
     def cancel(self):
-        self._cb_a.cancel()
-        self._cb_b.cancel()
-        lgpio.gpio_free(self.h, self.pin_a)
-        lgpio.gpio_free(self.h, self.pin_b)
+        self._cb.cancel()
+        lgpio.gpio_free(self.h, self.pin)
 
 # ── PID controller (mirrors WheelPID in control.cpp) ─────────────────────────
 
@@ -137,8 +116,8 @@ def run_test(args):
 
     time.sleep(0.1)  # let serial settle
 
-    enc_l = QuadratureEncoder(h, ENC_LEFT_A, ENC_LEFT_B)
-    enc_r = QuadratureEncoder(h, ENC_RIGHT_A, ENC_RIGHT_B)
+    enc_l = Encoder(h, ENC_LEFT)
+    enc_r = Encoder(h, ENC_RIGHT)
     pid_l = WheelPID(args.kp, args.ki, args.kd, args.i_clamp)
     pid_r = WheelPID(args.kp, args.ki, args.kd, args.i_clamp)
 
