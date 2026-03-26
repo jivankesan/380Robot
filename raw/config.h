@@ -33,16 +33,16 @@ static constexpr bool RIGHT_REVERSED = false;
 
 // ── Encoder (Pi GPIO, BCM numbering) ─────────────────────────────────────────
 // Pi 5 uses /dev/gpiochip4; earlier Pis use /dev/gpiochip0
-static constexpr int GPIOCHIP    = 4;
-static constexpr int ENC_LEFT    = 27;   // single channel, both edges
-static constexpr int ENC_RIGHT   = 24;   // single channel, both edges
+static constexpr int GPIOCHIP = 4;
+static constexpr int ENC_LEFT = 27;                     // single channel, both edges
+static constexpr int ENC_RIGHT = 24;                    // single channel, both edges
 static constexpr double ENCODER_TICKS_PER_REV = 682.4;  // 341.2 PPR × 2 edges
 
 // ── Wheel velocity PID ────────────────────────────────────────────────────────
 // Output is in PWM units. Feedforward handles steady-state; PID corrects error.
-static constexpr double MOTOR_KP      = 3.8;  // PWM / (rad/s)
-static constexpr double MOTOR_KI      = 1.1;  // PWM / (rad/s·s)
-static constexpr double MOTOR_KD      = 0.1;  // PWM / (rad/s²)
+static constexpr double MOTOR_KP = 3.8;       // PWM / (rad/s)
+static constexpr double MOTOR_KI = 1.1;       // PWM / (rad/s·s)
+static constexpr double MOTOR_KD = 0.1;       // PWM / (rad/s²)
 static constexpr double MOTOR_I_CLAMP = 1.0;  // integral state clamp (rad)
 
 // Servo angles (sent as C,<servo_num>,<angle>\n to Arduino)
@@ -60,13 +60,13 @@ static constexpr double KP_LATERAL = 2.5;
 static constexpr double KD_LATERAL = 6.0;
 static constexpr double KP_HEADING = 1.8;
 static constexpr double KD_HEADING = 8.0;
-static constexpr double BASE_SPEED_MPS = 0.50;
+static constexpr double BASE_SPEED_MPS = 0.90;
 static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
 static constexpr double MAX_ANG_VEL_RPS = 2.5;     // was 1.6  – allow sharper corrections
 static constexpr double HEADING_BRAKE_GAIN = 2.0;  // was 1.5  – brake harder on curves
 static constexpr double TURN_SPEED_GAIN = 5.0;     // was 4.0
-static constexpr double MIN_TURN_SPEED_MPS = 0.12;
+static constexpr double MIN_TURN_SPEED_MPS = 0.2;
 static constexpr double TURN_OMEGA_DEADBAND = 0.15;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 

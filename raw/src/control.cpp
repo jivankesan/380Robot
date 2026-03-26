@@ -246,7 +246,7 @@ void control_thread(SharedState& state) {
       double pid_out_r = MOTOR_KP * err_r + MOTOR_KI * pid_int_r + MOTOR_KD * d_err_r;
 
       // Feedforward: map target omega to PWM via empirical motor max
-      const double max_wheel_omega = 22.0;  // 210 RPM * 2π/60 = 21.99 rad/s
+      const double max_wheel_omega = 17.0;  // empirical loaded motor max (rad/s)
       double ff_l =
         std::clamp(tgt_omega_l / max_wheel_omega, -1.0, 1.0) * LEFT_MOTOR_GAIN * MAX_PWM;
       double ff_r =
