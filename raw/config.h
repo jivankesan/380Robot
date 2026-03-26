@@ -21,7 +21,7 @@ static constexpr double WHEEL_RADIUS_M = 0.048;  // 96 mm diameter
 // PWM limits
 static constexpr int MAX_PWM = 255;
 static constexpr int MIN_PWM = 30;       // deadband override
-static constexpr int SPIN_PWM = 80;      // full-spin PWM (both wheels active, halved from 150)
+static constexpr int SPIN_PWM = 50;      // full-spin PWM
 static constexpr int SPIN_MIN_PWM = 20;  // minimum spin PWM
 
 // Motor calibration – reduce the gain of the faster wheel until both match
@@ -41,14 +41,14 @@ static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 // arrive earlier. Gains raised accordingly; KD raised for damping to prevent
 // overshoot from acting on predicted-future error rather than current error.
 static constexpr double CONTROL_RATE_HZ = 100.0;
-static constexpr double KP_LATERAL = 2.5;
-static constexpr double KD_LATERAL = 6.0;
-static constexpr double KP_HEADING = 1.8;
-static constexpr double KD_HEADING = 7.0;
+static constexpr double KP_LATERAL = 1.5;
+static constexpr double KD_LATERAL = 4.0;
+static constexpr double KP_HEADING = 1.2;
+static constexpr double KD_HEADING = 5.0;
 static constexpr double BASE_SPEED_MPS = 0.50;
 static constexpr double MAX_LIN_VEL_MPS = 0.5;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
-static constexpr double MAX_ANG_VEL_RPS = 2.5;     // was 1.6  – allow sharper corrections
+static constexpr double MAX_ANG_VEL_RPS = 1.5;
 static constexpr double HEADING_BRAKE_GAIN = 2.0;  // was 1.5  – brake harder on curves
 static constexpr double TURN_SPEED_GAIN = 5.0;     // was 4.0
 static constexpr double MIN_TURN_SPEED_MPS = 0.12;
