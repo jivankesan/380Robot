@@ -44,7 +44,7 @@ static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 static constexpr double CONTROL_RATE_HZ = 100.0;
 static constexpr double KP_LATERAL = 2.8;
 static constexpr double KD_LATERAL = 6.0;
-static constexpr double KP_HEADING = 3.8;
+static constexpr double KP_HEADING = 3.9;
 static constexpr double KD_HEADING = 8.0;
 static constexpr double BASE_SPEED_MPS = 0.95;
 static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
@@ -53,7 +53,7 @@ static constexpr double MAX_ANG_VEL_RPS = 2.5;
 static constexpr double HEADING_BRAKE_GAIN = 3.5;
 static constexpr double TURN_SPEED_GAIN = 8.0;
 static constexpr double MIN_TURN_SPEED_MPS = 0.2;  // raised from 0.12 – from run 4094
-static constexpr double TURN_OMEGA_DEADBAND = 0.15;
+static constexpr double TURN_OMEGA_DEADBAND = 0.07;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
