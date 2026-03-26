@@ -14,7 +14,7 @@ static constexpr double TELEMETRY_RATE_HZ = 20.0;
 // Robot geometry
 static constexpr double WHEEL_BASE_M = 0.15;
 static constexpr double WHEEL_RADIUS_M = 0.048;  // 96 mm diameter
-static constexpr double MOTOR_MAX_RPM  = 210.0;
+static constexpr double MOTOR_MAX_RPM = 210.0;
 // Derived: max wheel omega = MOTOR_MAX_RPM * 2π / 60 ≈ 21.99 rad/s
 // Derived: max linear speed = max_wheel_omega * WHEEL_RADIUS_M ≈ 1.056 m/s
 
@@ -45,7 +45,7 @@ static constexpr double CONTROL_RATE_HZ = 100.0;
 static constexpr double KP_LATERAL = 2.5;
 static constexpr double KD_LATERAL = 6.0;
 static constexpr double KP_HEADING = 1.8;
-static constexpr double KD_HEADING = 7.0;
+static constexpr double KD_HEADING = 7.3;
 static constexpr double BASE_SPEED_MPS = 0.50;
 static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
@@ -102,9 +102,9 @@ static constexpr double DROP_UNROTATE_TIME_S = 1.0;  // time to rotate arm back 
 static constexpr double DROP_OPEN_TIME_S = 1.0;      // time to open gripper
 
 // Find line after drop (reverse briefly, then turn left until red line seen)
-static constexpr double FIND_LINE_REVERSE_TIME_S = 0.8;      // reverse to clear dropped package
-static constexpr double FIND_LINE_OMEGA_RPS = 1.2;           // positive = left turn
-static constexpr double FIND_LINE_TIMEOUT_S = 6.0;           // failsafe if line never found
+static constexpr double FIND_LINE_REVERSE_TIME_S = 0.8;  // reverse to clear dropped package
+static constexpr double FIND_LINE_OMEGA_RPS = 1.2;       // positive = left turn
+static constexpr double FIND_LINE_TIMEOUT_S = 6.0;       // failsafe if line never found
 
 // Approach (vision-based drive toward blue circle – unused in current flow, kept for reference)
 static constexpr double APPROACH_SPEED_MPS = 0.15;
