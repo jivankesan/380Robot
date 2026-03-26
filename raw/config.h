@@ -59,7 +59,7 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 // ── Speed profiler ───────────────────────────────────────────────────────────
 static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double SP_V_MIN = 0.1;
-static constexpr double SP_A_MAX_ACCEL = 8.5;
+static constexpr double SP_A_MAX_ACCEL = 8.8;
 static constexpr double SP_A_MAX_DECEL = 15.0;  // was 6.0  – brake faster into turns
 static constexpr double SP_ALPHA_MAX = 8.0;     // was 4.0  – angular rate can change faster
 static constexpr double SP_K_CURVATURE = 0.6;   // was 0.3
@@ -86,8 +86,8 @@ static constexpr double GREEN_ROI_Y_END = 0.70;  // top 70% – box spans past h
 static constexpr double FSM_RATE_HZ = 20.0;
 static constexpr double PICKUP_DRIVE_TIME_S = 0.22;     // drive forward after blue seen
 static constexpr double PICKUP_DRIVE_SPEED_MPS = 0.15;  // slow creep toward target
-static constexpr double PICKUP_CLOSE_TIME_S = 0.5;
-static constexpr double PICKUP_ROTATE_TIME_S = 0.2;
+static constexpr double PICKUP_CLOSE_TIME_S = 0.2;
+static constexpr double PICKUP_ROTATE_TIME_S = 0.1;
 static constexpr double PICKUP_SPIN_TIME_S = 1.1;
 static constexpr double PICKUP_SPIN_OMEGA_RPS = 1.5;
 static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
@@ -98,8 +98,8 @@ static constexpr double DROP_ZONE_TURN_OMEGA_RPS = -PICKUP_SPIN_OMEGA_RPS;  // o
 static constexpr double DROP_ZONE_TURN_TIME_S = 0.55;                       // tune to adjust angle
 
 // Drop sequence
-static constexpr double DROP_UNROTATE_TIME_S = 1.0;  // time to rotate arm back to HOME
-static constexpr double DROP_OPEN_TIME_S = 1.0;      // time to open gripper
+static constexpr double DROP_UNROTATE_TIME_S = 0.4;  // time to rotate arm back to HOME
+static constexpr double DROP_OPEN_TIME_S = 0.1;      // time to open gripper
 
 // Find line after drop (reverse briefly, then turn left until red line seen)
 static constexpr double FIND_LINE_REVERSE_TIME_S = 0.8;  // reverse to clear dropped package
