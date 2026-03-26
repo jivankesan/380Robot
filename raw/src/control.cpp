@@ -179,8 +179,8 @@ void control_thread(SharedState& state) {
             if (LEFT_REVERSED)  pwm_l = -pwm_l;
             if (RIGHT_REVERSED) pwm_r = -pwm_r;
         } else {
-            double v_left  = v_cmd - omega_cmd * WHEEL_BASE_M / 2.0;
-            double v_right = v_cmd + omega_cmd * WHEEL_BASE_M / 2.0;
+            double v_left  = v_cmd + omega_cmd * WHEEL_BASE_M / 2.0;
+            double v_right = v_cmd - omega_cmd * WHEEL_BASE_M / 2.0;
 
             double omega_left  = v_left  / WHEEL_RADIUS_M;
             double omega_right = v_right / WHEEL_RADIUS_M;
