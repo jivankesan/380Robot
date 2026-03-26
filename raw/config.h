@@ -27,7 +27,7 @@ static constexpr int SPIN_TICKS = 5;  // ticks per side before alternating (at 5
 
 // Motor calibration – reduce the gain of the faster wheel until both match
 static constexpr double LEFT_MOTOR_GAIN = 1.0;
-static constexpr double RIGHT_MOTOR_GAIN = 1.05;
+static constexpr double RIGHT_MOTOR_GAIN = 1.03;
 static constexpr bool LEFT_REVERSED = false;
 static constexpr bool RIGHT_REVERSED = false;
 
