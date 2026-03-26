@@ -60,7 +60,7 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double SP_V_MIN = 0.1;
 static constexpr double SP_A_MAX_ACCEL = 9.9;
-static constexpr double SP_A_MAX_DECEL = 15.7;  // was 6.0  – brake faster into turns
+static constexpr double SP_A_MAX_DECEL = 16.7;  // was 6.0  – brake faster into turns
 static constexpr double SP_ALPHA_MAX = 8.9;     // was 4.0  – angular rate can change faster
 static constexpr double SP_K_CURVATURE = 0.8;   // was 0.3
 static constexpr double SP_K_ERROR = 0.4;       // was 0.3
@@ -84,7 +84,7 @@ static constexpr double GREEN_ROI_Y_END = 0.70;  // top 70% – box spans past h
 
 // ── FSM ──────────────────────────────────────────────────────────────────────
 static constexpr double FSM_RATE_HZ = 20.0;
-static constexpr double PICKUP_DRIVE_TIME_S = 0.25;     // drive forward after blue seen
+static constexpr double PICKUP_DRIVE_TIME_S = 0.24;     // drive forward after blue seen
 static constexpr double PICKUP_DRIVE_SPEED_MPS = 0.15;  // slow creep toward target
 static constexpr double PICKUP_CLOSE_TIME_S = 0.1;
 static constexpr double PICKUP_ROTATE_TIME_S = 0.1;
