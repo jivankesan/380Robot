@@ -57,7 +57,7 @@ static constexpr double TURN_OMEGA_DEADBAND = 0.15;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
-static constexpr double SP_V_MAX = 0.45;
+static constexpr double SP_V_MAX = 0.35;
 static constexpr double SP_V_MIN = 0.20;
 static constexpr double SP_A_MAX_ACCEL = 3.0;
 static constexpr double SP_A_MAX_DECEL = 8.0;
