@@ -43,9 +43,9 @@ static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 // be larger without losing the inner wheel at zero.
 static constexpr double CONTROL_RATE_HZ = 100.0;
 static constexpr double KP_LATERAL = 1.5;
-static constexpr double KD_LATERAL = 0.5;
-static constexpr double KP_HEADING = 1.8;
-static constexpr double KD_HEADING = 2.6;
+static constexpr double KD_LATERAL = 0.7;
+static constexpr double KP_HEADING = 1.9;
+static constexpr double KD_HEADING = 2.8;
 static constexpr double BASE_SPEED_MPS = 0.20;
 static constexpr double MAX_LIN_VEL_MPS = 0.20;
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
