@@ -20,9 +20,9 @@ static constexpr double WHEEL_RADIUS_M = 0.048;  // 96 mm diameter
 
 // PWM limits
 static constexpr int MAX_PWM = 255;
-static constexpr int MIN_PWM = 30;       // deadband override
-static constexpr int SPIN_PWM = 50;      // full-spin PWM
-static constexpr int SPIN_MIN_PWM = 20;  // minimum spin PWM
+static constexpr int MIN_PWM = 55;       // deadband override
+static constexpr int SPIN_PWM = 70;      // full-spin PWM
+static constexpr int SPIN_MIN_PWM = 55;  // minimum spin PWM
 
 // Motor calibration – reduce the gain of the faster wheel until both match
 static constexpr double LEFT_MOTOR_GAIN = 1.0;
@@ -44,8 +44,8 @@ static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 static constexpr double CONTROL_RATE_HZ = 100.0;
 static constexpr double KP_LATERAL = 2.7;
 static constexpr double KD_LATERAL = 6.0;
-static constexpr double KP_HEADING = 0.9;
-static constexpr double KD_HEADING = 9.1;
+static constexpr double KP_HEADING = 0.8;
+static constexpr double KD_HEADING = 8.9;
 static constexpr double BASE_SPEED_MPS = 0.20;
 static constexpr double MAX_LIN_VEL_MPS = 0.20;
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
