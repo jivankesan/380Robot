@@ -37,7 +37,7 @@ import matplotlib.gridspec as gridspec
 
 # ── Constants – must match config.h ──────────────────────────────────────────
 WHEEL_RADIUS_M        = 0.048
-ENCODER_TICKS_PER_REV = 341.2
+ENCODER_TICKS_PER_REV = 1364.8  # 341.2 PPR × 4 (4x quadrature)
 TICKS_PER_RAD         = ENCODER_TICKS_PER_REV / (2.0 * math.pi)
 MAX_PWM               = 255
 MIN_PWM               = 30
@@ -45,8 +45,8 @@ MAX_WHEEL_OMEGA       = 22.0   # 210 RPM * 2π/60 = 21.99 rad/s
 
 # Encoder GPIO pins (BCM numbering) and gpiochip (Pi 5 = 4, older Pi = 0)
 GPIOCHIP    = 4
-ENC_LEFT_A  = 27
-ENC_LEFT_B  = 17
+ENC_LEFT_A  = 17
+ENC_LEFT_B  = 27
 ENC_RIGHT_A = 24
 ENC_RIGHT_B = 23
 
