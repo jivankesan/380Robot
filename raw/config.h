@@ -46,7 +46,7 @@ static constexpr double KP_LATERAL = 2.5;
 static constexpr double KD_LATERAL = 6.0;
 static constexpr double KP_HEADING = 1.8;
 static constexpr double KD_HEADING = 8.0;
-static constexpr double BASE_SPEED_MPS = 0.90;
+static constexpr double BASE_SPEED_MPS = 0.99;
 static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
 static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper corrections
@@ -62,7 +62,7 @@ static constexpr double SP_V_MIN = 0.1;
 static constexpr double SP_A_MAX_ACCEL = 9.9;
 static constexpr double SP_A_MAX_DECEL = 15.6;  // was 6.0  – brake faster into turns
 static constexpr double SP_ALPHA_MAX = 8.7;     // was 4.0  – angular rate can change faster
-static constexpr double SP_K_CURVATURE = 0.6;   // was 0.3
+static constexpr double SP_K_CURVATURE = 0.8;   // was 0.3
 static constexpr double SP_K_ERROR = 0.4;       // was 0.3
 static constexpr double SP_K_HEADING = 0.4;     // was 0.3
 
@@ -86,7 +86,7 @@ static constexpr double GREEN_ROI_Y_END = 0.70;  // top 70% – box spans past h
 static constexpr double FSM_RATE_HZ = 20.0;
 static constexpr double PICKUP_DRIVE_TIME_S = 0.24;     // drive forward after blue seen
 static constexpr double PICKUP_DRIVE_SPEED_MPS = 0.15;  // slow creep toward target
-static constexpr double PICKUP_CLOSE_TIME_S = 0.2;
+static constexpr double PICKUP_CLOSE_TIME_S = 0.1;
 static constexpr double PICKUP_ROTATE_TIME_S = 0.1;
 static constexpr double PICKUP_SPIN_TIME_S = 0.9;
 static constexpr double PICKUP_SPIN_OMEGA_RPS = 1.5;
@@ -95,10 +95,10 @@ static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 // Drop zone approach: turn right 30deg, then drive forward into box
 // Drop zone: stop, turn hard right, then drop
 static constexpr double DROP_ZONE_TURN_OMEGA_RPS = -PICKUP_SPIN_OMEGA_RPS;  // opposite of 180 spin
-static constexpr double DROP_ZONE_TURN_TIME_S = 0.55;                       // tune to adjust angle
+static constexpr double DROP_ZONE_TURN_TIME_S = 0.25;                       // tune to adjust angle
 
 // Drop sequence
-static constexpr double DROP_UNROTATE_TIME_S = 0.4;  // time to rotate arm back to HOME
+static constexpr double DROP_UNROTATE_TIME_S = 0.1;  // time to rotate arm back to HOME
 static constexpr double DROP_OPEN_TIME_S = 0.1;      // time to open gripper
 
 // Find line after drop (reverse briefly, then turn left until red line seen)
