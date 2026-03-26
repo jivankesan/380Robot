@@ -42,14 +42,14 @@ static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 // Inner wheel can now go negative (opposite-direction motors), so omega can
 // be larger without losing the inner wheel at zero.
 static constexpr double CONTROL_RATE_HZ = 100.0;
-static constexpr double KP_LATERAL = 1.2;
+static constexpr double KP_LATERAL = 1.0;
 static constexpr double KD_LATERAL = 0.0;
-static constexpr double KP_HEADING = 2.5;
-static constexpr double KD_HEADING = 0.8;
+static constexpr double KP_HEADING = 1.2;
+static constexpr double KD_HEADING = 0.5;
 static constexpr double BASE_SPEED_MPS = 0.25;
 static constexpr double MAX_LIN_VEL_MPS = 0.5;
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
-static constexpr double MAX_ANG_VEL_RPS = 3.0;
+static constexpr double MAX_ANG_VEL_RPS = 1.8;
 static constexpr double HEADING_BRAKE_GAIN = 1.2;
 static constexpr double TURN_SPEED_GAIN = 2.5;
 static constexpr double MIN_TURN_SPEED_MPS = 0.10;
