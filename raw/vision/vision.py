@@ -38,7 +38,7 @@ import numpy as np
 SOCKET_PATH = "/tmp/robot_vision.sock"
 
 # Line detector
-LINE_ROI_Y_START         = 0.05  # was 0.1 – look further ahead for earlier turn detection
+LINE_ROI_Y_START         = 0.075  # was 0.1 – look further ahead for earlier turn detection
 LINE_ROI_Y_END           = 0.6
 LINE_ROI_X_START         = 0.10
 LINE_ROI_X_END           = 0.90
