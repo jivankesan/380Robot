@@ -53,13 +53,13 @@ static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper co
 static constexpr double HEADING_BRAKE_GAIN = 1.5;
 static constexpr double TURN_SPEED_GAIN = 4.0;
 static constexpr double MIN_TURN_SPEED_MPS = 0.12;
-static constexpr double TURN_OMEGA_DEADBAND = 0.15;
+static constexpr double TURN_OMEGA_DEADBAND = 0.1;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
 static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double SP_V_MIN = 0.1;
-static constexpr double SP_A_MAX_ACCEL = 9.4;
+static constexpr double SP_A_MAX_ACCEL = 9.9;
 static constexpr double SP_A_MAX_DECEL = 15.6;  // was 6.0  – brake faster into turns
 static constexpr double SP_ALPHA_MAX = 8.7;     // was 4.0  – angular rate can change faster
 static constexpr double SP_K_CURVATURE = 0.6;   // was 0.3
