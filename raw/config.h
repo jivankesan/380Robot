@@ -32,10 +32,10 @@ static constexpr bool LEFT_REVERSED = false;
 static constexpr bool RIGHT_REVERSED = false;
 
 // Servo angles (sent as C,<servo_num>,<angle>\n to Arduino)
-static constexpr int SERVO1_HOME = 35;     // rotation arm: horizontal/resting
+static constexpr int SERVO1_HOME = 5;      // rotation arm: horizontal/resting
 static constexpr int SERVO1_CARRY = 90;    // rotation arm: rotated carry
-static constexpr int SERVO2_OPEN = 50;     // gripper: open
-static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
+static constexpr int SERVO2_OPEN = 55;     // gripper: open
+static constexpr int SERVO2_CLOSED = 140;  // gripper: closed
 
 // ── Line-follow PD controller ────────────────────────────────────────────────
 // ROI is now a lookahead window (y: 0.10–0.60) so errors are larger and
@@ -59,7 +59,7 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 // ── Speed profiler ───────────────────────────────────────────────────────────
 static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double SP_V_MIN = 0.1;
-static constexpr double SP_A_MAX_ACCEL = 8.0;
+static constexpr double SP_A_MAX_ACCEL = 9.0;
 static constexpr double SP_A_MAX_DECEL = 12.0;  // was 6.0  – brake faster into turns
 static constexpr double SP_ALPHA_MAX = 7.0;     // was 4.0  – angular rate can change faster
 static constexpr double SP_K_CURVATURE = 0.4;   // was 0.3
