@@ -60,9 +60,9 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double SP_V_MIN = 0.1;
 static constexpr double SP_A_MAX_ACCEL = 8.5;
-static constexpr double SP_A_MAX_DECEL = 14.0;  // was 6.0  – brake faster into turns
+static constexpr double SP_A_MAX_DECEL = 16.0;  // was 6.0  – brake faster into turns
 static constexpr double SP_ALPHA_MAX = 8.0;     // was 4.0  – angular rate can change faster
-static constexpr double SP_K_CURVATURE = 0.5;   // was 0.3
+static constexpr double SP_K_CURVATURE = 0.6;   // was 0.3
 static constexpr double SP_K_ERROR = 0.4;       // was 0.3
 static constexpr double SP_K_HEADING = 0.4;     // was 0.3
 
