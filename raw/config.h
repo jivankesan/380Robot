@@ -27,7 +27,7 @@ static constexpr int SPIN_TICKS = 5;  // ticks per side before alternating (at 5
 
 // Motor calibration – reduce the gain of the faster wheel until both match
 static constexpr double LEFT_MOTOR_GAIN = 1.0;
-static constexpr double RIGHT_MOTOR_GAIN = 1.0;
+static constexpr double RIGHT_MOTOR_GAIN = 1.05;
 static constexpr bool LEFT_REVERSED = false;
 static constexpr bool RIGHT_REVERSED = false;
 
@@ -53,7 +53,7 @@ static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper co
 static constexpr double HEADING_BRAKE_GAIN = 1.5;
 static constexpr double TURN_SPEED_GAIN = 3.8;
 static constexpr double MIN_TURN_SPEED_MPS = 0.12;
-static constexpr double TURN_OMEGA_DEADBAND = 0.15;
+static constexpr double TURN_OMEGA_DEADBAND = 0.1;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
