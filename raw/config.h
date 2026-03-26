@@ -45,7 +45,7 @@ static constexpr double CONTROL_RATE_HZ = 100.0;
 static constexpr double KP_LATERAL = 2.8;
 static constexpr double KD_LATERAL = 6.0;
 static constexpr double KP_HEADING = 3.9;
-static constexpr double KD_HEADING = 11.0;  // raised from 8.0 – anticipate turn earlier
+static constexpr double KD_HEADING = 13.0;  // raised from 8.0 – anticipate turn earlier
 static constexpr double BASE_SPEED_MPS = 0.95;
 static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
@@ -64,7 +64,7 @@ static constexpr double SP_A_MAX_DECEL = 12.0;  // raised from 8.0 – brake fas
 static constexpr double SP_ALPHA_MAX = 6.0;
 static constexpr double SP_K_CURVATURE = 0.8;  // raised from 0.4 – profiler slows more on curves
 static constexpr double SP_K_ERROR = 0.4;
-static constexpr double SP_K_HEADING = 0.8;    // raised from 0.4 – profiler slows more on heading
+static constexpr double SP_K_HEADING = 0.8;  // raised from 0.4 – profiler slows more on heading
 
 // ── Safety ───────────────────────────────────────────────────────────────────
 static constexpr double SAFETY_CMD_TIMEOUT_S = 0.5;
