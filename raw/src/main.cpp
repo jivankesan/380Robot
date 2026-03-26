@@ -21,8 +21,11 @@
 #include "shared_state.h"
 #include "serial.h"
 #include "control.h"
+#include "encoder.h"
 #include "fsm.h"
 #include "../config.h"
+
+#include <pigpio.h>
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -195,6 +198,13 @@ int main(int argc, char* argv[]) {
     std::string camera_src = "0";
     if (argc >= 2) camera_src = argv[1];
 
+    // Init pigpio before any GPIO use
+    if (gpioInitialise() < 0) {
+        std::cerr << "[main] gpioInitialise failed – encoder will not work\n";
+    } else {
+        encoder_init();
+    }
+
     SharedState state;
     g_state_ptr = &state;
 
@@ -239,6 +249,9 @@ int main(int argc, char* argv[]) {
     t_control.join();
     t_serial.join();
     t_sock.join();
+
+    encoder_cleanup();
+    gpioTerminate();
 
     std::cout << "[main] clean shutdown\n";
     return 0;

@@ -16,6 +16,7 @@ add_executable(robot
     src/main.cpp
     src/serial.cpp
     src/control.cpp
+    src/encoder.cpp
     src/fsm.cpp
 )
 
@@ -24,5 +25,8 @@ target_include_directories(robot PRIVATE ${CMAKE_SOURCE_DIR})
 # pthreads
 find_package(Threads REQUIRED)
 target_link_libraries(robot PRIVATE Threads::Threads)
+
+# pigpio (must be installed on the Pi: sudo apt install libpigpio-dev)
+target_link_libraries(robot PRIVATE pigpio)
 
 install(TARGETS robot DESTINATION bin)

@@ -31,6 +31,20 @@ static constexpr double RIGHT_MOTOR_GAIN = 1.0;
 static constexpr bool LEFT_REVERSED = false;
 static constexpr bool RIGHT_REVERSED = false;
 
+// ── Encoder (Pi GPIO, BCM numbering) ─────────────────────────────────────────
+static constexpr int ENC_LEFT_A  = 17;
+static constexpr int ENC_LEFT_B  = 27;
+static constexpr int ENC_RIGHT_A = 23;
+static constexpr int ENC_RIGHT_B = 24;
+static constexpr double ENCODER_TICKS_PER_REV = 341.2;  // 4x quadrature count
+
+// ── Wheel velocity PID ────────────────────────────────────────────────────────
+// Output is in PWM units. Feedforward handles steady-state; PID corrects error.
+static constexpr double MOTOR_KP     = 20.0;  // PWM / (rad/s)
+static constexpr double MOTOR_KI     = 5.0;   // PWM / (rad/s·s)
+static constexpr double MOTOR_KD     = 0.1;   // PWM / (rad/s²)
+static constexpr double MOTOR_I_CLAMP = 4.0;  // integral state clamp (rad)
+
 // Servo angles (sent as C,<servo_num>,<angle>\n to Arduino)
 static constexpr int SERVO1_HOME = 5;      // rotation arm: horizontal/resting
 static constexpr int SERVO1_CARRY = 90;    // rotation arm: rotated carry
