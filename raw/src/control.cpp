@@ -194,12 +194,6 @@ void control_thread(SharedState& state) {
             pwm_l = static_cast<int>(norm_l * MAX_PWM);
             pwm_r = static_cast<int>(norm_r * MAX_PWM);
 
-            // During forward motion keep both wheels forward
-            if (v_cmd > 0.0) {
-                pwm_l = std::max(0, pwm_l);
-                pwm_r = std::max(0, pwm_r);
-            }
-
             // Enforce minimum PWM to overcome static friction
             auto apply_min = [](int p) -> int {
                 if (p > 0 && p < MIN_PWM)  return MIN_PWM;
