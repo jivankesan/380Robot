@@ -21,8 +21,8 @@ static constexpr double WHEEL_RADIUS_M = 0.048;  // 96 mm diameter
 // PWM limits
 static constexpr int MAX_PWM = 255;
 static constexpr int MIN_PWM = 30;       // deadband override
-static constexpr int SPIN_PWM = 150;     // full-spin PWM
-static constexpr int SPIN_MIN_PWM = 40;  // minimum spin PWM
+static constexpr int SPIN_PWM = 80;      // full-spin PWM (both wheels active, halved from 150)
+static constexpr int SPIN_MIN_PWM = 20;  // minimum spin PWM
 
 // Motor calibration – reduce the gain of the faster wheel until both match
 static constexpr double LEFT_MOTOR_GAIN = 1.0;
