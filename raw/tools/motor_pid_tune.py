@@ -45,8 +45,8 @@ MAX_WHEEL_OMEGA       = 22.0   # 210 RPM * 2π/60 = 21.99 rad/s
 
 # Encoder GPIO pins (BCM numbering) and gpiochip (Pi 5 = 4, older Pi = 0)
 GPIOCHIP    = 4
-ENC_LEFT_A  = 17
-ENC_LEFT_B  = 27
+ENC_LEFT_A  = 27
+ENC_LEFT_B  = 17
 ENC_RIGHT_A = 24
 ENC_RIGHT_B = 23
 
