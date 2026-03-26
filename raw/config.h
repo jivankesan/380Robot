@@ -43,9 +43,9 @@ static constexpr int SERVO2_CLOSED = 130;  // gripper: closed
 // overshoot from acting on predicted-future error rather than current error.
 static constexpr double CONTROL_RATE_HZ = 100.0;
 static constexpr double KP_LATERAL = 2.8;
-static constexpr double KD_LATERAL = 6.0;
-static constexpr double KP_HEADING = 3.9;
-static constexpr double KD_HEADING = 13.0;  // raised from 8.0 – anticipate turn earlier
+static constexpr double KD_LATERAL = 8.0;
+static constexpr double KP_HEADING = 4.1;
+static constexpr double KD_HEADING = 11.0;  // raised from 8.0 – anticipate turn earlier
 static constexpr double BASE_SPEED_MPS = 0.95;
 static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
