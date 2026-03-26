@@ -41,14 +41,14 @@ ENCODER_TICKS_PER_REV = 341.2
 TICKS_PER_RAD         = ENCODER_TICKS_PER_REV / (2.0 * math.pi)
 MAX_PWM               = 255
 MIN_PWM               = 30
-MAX_WHEEL_OMEGA       = 10.0   # empirical loaded motor max (rad/s) – same as control.cpp
+MAX_WHEEL_OMEGA       = 22.0   # 210 RPM * 2π/60 = 21.99 rad/s
 
 # Encoder GPIO pins (BCM numbering) and gpiochip (Pi 5 = 4, older Pi = 0)
 GPIOCHIP    = 4
-ENC_LEFT_A  = 17
-ENC_LEFT_B  = 27
-ENC_RIGHT_A = 23
-ENC_RIGHT_B = 24
+ENC_LEFT_A  = 27
+ENC_LEFT_B  = 17
+ENC_RIGHT_A = 24
+ENC_RIGHT_B = 23
 
 # Quadrature decode lookup: index = (prev_AB << 2) | new_AB
 QEM = [
