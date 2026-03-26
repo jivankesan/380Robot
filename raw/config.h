@@ -46,8 +46,8 @@ static constexpr double KP_LATERAL = 10.647;
 static constexpr double KD_LATERAL = 2.305;
 static constexpr double KP_HEADING = 7.171;
 static constexpr double KD_HEADING = 1.628;
-static constexpr double BASE_SPEED_MPS = 0.935;
-static constexpr double MAX_LIN_VEL_MPS = 0.935;
+static constexpr double BASE_SPEED_MPS = 0.30;
+static constexpr double MAX_LIN_VEL_MPS = 0.35;
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
 static constexpr double MAX_ANG_VEL_RPS = 8.094;
 static constexpr double HEADING_BRAKE_GAIN = 0.139;
@@ -57,7 +57,7 @@ static constexpr double TURN_OMEGA_DEADBAND = 0.15;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
-static constexpr double SP_V_MAX = 0.935;
+static constexpr double SP_V_MAX = 0.35;
 static constexpr double SP_V_MIN = 0.10;
 static constexpr double SP_A_MAX_ACCEL = 2.0;
 static constexpr double SP_A_MAX_DECEL = 13.313;
