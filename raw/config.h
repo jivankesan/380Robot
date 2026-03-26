@@ -53,7 +53,7 @@ static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper co
 static constexpr double HEADING_BRAKE_GAIN = 1.5;
 static constexpr double TURN_SPEED_GAIN = 3.8;
 static constexpr double MIN_TURN_SPEED_MPS = 0.12;
-static constexpr double TURN_OMEGA_DEADBAND = 0.1;
+static constexpr double TURN_OMEGA_DEADBAND = 0.11;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
