@@ -38,9 +38,6 @@ static constexpr int SERVO2_OPEN = 55;     // gripper: open
 static constexpr int SERVO2_CLOSED = 140;  // gripper: closed
 
 // ── Line-follow PD controller ────────────────────────────────────────────────
-// ROI is now a lookahead window (y: 0.10–0.60) so errors are larger and
-// arrive earlier. Gains raised accordingly; KD raised for damping to prevent
-// overshoot from acting on predicted-future error rather than current error.
 static constexpr double CONTROL_RATE_HZ = 100.0;
 static constexpr double KP_LATERAL = 2.5;
 static constexpr double KD_LATERAL = 6.0;
@@ -49,12 +46,11 @@ static constexpr double KD_HEADING = 8.0;
 static constexpr double BASE_SPEED_MPS = 1.056;   // was 0.99 – run at motor max on straights
 static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
-static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper corrections
-static constexpr double HEADING_BRAKE_GAIN =
-  0.0;  // zeroed – heading already penalizes speed via raw_omega excess term
+static constexpr double MAX_ANG_VEL_RPS = 2.5;
+static constexpr double HEADING_BRAKE_GAIN = 0.1;
 static constexpr double TURN_SPEED_GAIN = 2.0;
 static constexpr double MIN_TURN_SPEED_MPS = 0.12;
-static constexpr double TURN_OMEGA_DEADBAND = 0.20;
+static constexpr double TURN_OMEGA_DEADBAND = 0.15;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
