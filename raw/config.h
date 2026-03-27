@@ -68,15 +68,15 @@ static constexpr double SP_K_HEADING = 0.4;    // was 0.3
 
 // ── Post-drop safe params (switched at runtime after package is released) ────
 // These replace the aggressive outbound values for the return leg.
-static constexpr double RIGHT_MOTOR_GAIN_SAFE    = 1.0;
-static constexpr double BASE_SPEED_MPS_SAFE      = 0.50;
-static constexpr double HEADING_BRAKE_GAIN_SAFE  = 2.0;
-static constexpr double TURN_SPEED_GAIN_SAFE     = 5.0;
+static constexpr double RIGHT_MOTOR_GAIN_SAFE = 1.0;
+static constexpr double BASE_SPEED_MPS_SAFE = 0.50;
+static constexpr double HEADING_BRAKE_GAIN_SAFE = 2.0;
+static constexpr double TURN_SPEED_GAIN_SAFE = 5.0;
 static constexpr double TURN_OMEGA_DEADBAND_SAFE = 0.15;
-static constexpr double SP_A_MAX_ACCEL_SAFE      = 3.0;
-static constexpr double SP_A_MAX_DECEL_SAFE      = 8.0;
-static constexpr double SP_ALPHA_MAX_SAFE        = 6.0;
-static constexpr double SP_K_CURVATURE_SAFE      = 0.4;
+static constexpr double SP_A_MAX_ACCEL_SAFE = 3.0;
+static constexpr double SP_A_MAX_DECEL_SAFE = 8.0;
+static constexpr double SP_ALPHA_MAX_SAFE = 6.0;
+static constexpr double SP_K_CURVATURE_SAFE = 0.4;
 
 // ── Safety ───────────────────────────────────────────────────────────────────
 static constexpr double SAFETY_CMD_TIMEOUT_S = 0.5;
@@ -107,7 +107,7 @@ static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 // Drop zone approach: turn right 30deg, then drive forward into box
 // Drop zone: stop, turn hard right, then drop
 static constexpr double DROP_ZONE_TURN_OMEGA_RPS = -PICKUP_SPIN_OMEGA_RPS;  // opposite of 180 spin
-static constexpr double DROP_ZONE_TURN_TIME_S = 0.55;                       // tune to adjust angle
+static constexpr double DROP_ZONE_TURN_TIME_S = 0.60;                       // tune to adjust angle
 
 // Drop sequence
 static constexpr double DROP_UNROTATE_TIME_S = 1.0;  // time to rotate arm back to HOME
