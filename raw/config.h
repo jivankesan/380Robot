@@ -58,10 +58,10 @@ static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RAD
 static constexpr double SP_V_MIN = 0.13;
 static constexpr double SP_A_MAX_ACCEL = 3.0;
 static constexpr double SP_A_MAX_DECEL = 20.0;
-static constexpr double SP_ALPHA_MAX = 5.0;
+static constexpr double SP_ALPHA_MAX = 10.0;
 static constexpr double SP_STARTUP_ACCEL = 0.8;  // m/s² – cold-start ramp rate (~1.3s to full speed)
-static constexpr double SP_K_CURVATURE = 1.5;  // predictive: brakes before turn apex
-static constexpr double SP_K_OMEGA_CMD = 1.0;  // reactive: brakes on smoothed turn rate
+static constexpr double SP_K_CURVATURE = 3.0;  // predictive: brakes before turn apex
+static constexpr double SP_K_OMEGA_CMD = 1.5;  // reactive: brakes on smoothed turn rate
 static constexpr double SP_K_ERROR = 0.0;      // unused
 static constexpr double SP_K_HEADING = 0.0;    // unused
 
