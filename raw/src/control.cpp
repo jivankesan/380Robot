@@ -25,8 +25,9 @@ void control_thread(SharedState& state) {
     TimePoint last_valid_line_time = Clock::now();
 
     // ── Speed profiler state ─────────────────────────────────────────────────
-    double v_cmd     = 0.0;
-    double omega_cmd = 0.0;
+    double v_cmd      = 0.0;
+    double omega_cmd  = 0.0;
+    double v_max_ramp = 0.0;   // startup ramp cap – resets to SP_V_MIN whenever robot stops
 
     // ── Safety state ─────────────────────────────────────────────────────────
     TimePoint last_cmd_received   = Clock::now();  // updated any time we have a non-zero cmd
@@ -161,6 +162,12 @@ void control_thread(SharedState& state) {
                          - p_k_curv       * curv
                          - SP_K_OMEGA_CMD * omega_excess;
             }
+            // Startup ramp: cap v_target so the robot builds speed gradually from rest.
+            // Resets whenever robot stops, so each cold-start gets a gentle launch.
+            if (v_cmd < 0.05) v_max_ramp = SP_V_MIN;
+            v_max_ramp = std::min(v_max_ramp + SP_STARTUP_ACCEL * dt, SP_V_MAX);
+            v_target = std::min(v_target, v_max_ramp);
+
             v_target = std::clamp(v_target, SP_V_MIN, SP_V_MAX);
 
             // Only engage decel if target is meaningfully below current cmd.

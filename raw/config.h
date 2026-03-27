@@ -59,6 +59,7 @@ static constexpr double SP_V_MIN = 0.13;
 static constexpr double SP_A_MAX_ACCEL = 6.0;
 static constexpr double SP_A_MAX_DECEL = 20.0;
 static constexpr double SP_ALPHA_MAX = 5.0;
+static constexpr double SP_STARTUP_ACCEL = 1.5;  // m/s² – cold-start ramp rate (~0.7s to full speed)
 static constexpr double SP_K_CURVATURE = 1.5;  // predictive: brakes before turn apex
 static constexpr double SP_K_OMEGA_CMD = 1.0;  // reactive: brakes on smoothed turn rate
 static constexpr double SP_K_ERROR = 0.0;      // unused
