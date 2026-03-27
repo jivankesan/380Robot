@@ -103,12 +103,12 @@ struct SharedState {
     // When false, vision socket thread drops GREEN/NOGREEN messages.
     std::atomic<bool> green_detect_enabled{false};
 
-    // Shutdown signal
-    std::atomic<bool> shutdown{false};
+    // Set true by 'w' keypress in main; FSM waits for this before starting
+    std::atomic<bool> mission_started{false};
 
-    // Set true by FSM when drop completes; switches control to safe params
+    // Set true by FSM when package is dropped; control uses safe (slower) params
     std::atomic<bool> post_drop_mode{false};
 
-    // Set true by main thread when operator presses W; gates FSM start
-    std::atomic<bool> start_requested{false};
+    // Shutdown signal
+    std::atomic<bool> shutdown{false};
 };

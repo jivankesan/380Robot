@@ -27,7 +27,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
-#include <termios.h>
 #include <unistd.h>
 #include <signal.h>
 
@@ -44,19 +43,9 @@
 using namespace std::chrono_literals;
 
 // ── Global shutdown flag (set by SIGINT handler) ─────────────────────────────
-static SharedState*  g_state_ptr  = nullptr;
-static struct termios g_orig_termios{};
-static bool           g_raw_mode  = false;
-
-static void restore_terminal() {
-    if (g_raw_mode) {
-        tcsetattr(STDIN_FILENO, TCSANOW, &g_orig_termios);
-        g_raw_mode = false;
-    }
-}
+static SharedState* g_state_ptr = nullptr;
 
 static void sigint_handler(int) {
-    restore_terminal();
     std::cout << "\n[main] SIGINT – shutting down\n";
     if (g_state_ptr) g_state_ptr->shutdown.store(true);
 }
@@ -232,35 +221,21 @@ int main(int argc, char* argv[]) {
     std::thread t_control(control_thread, std::ref(state));
     std::thread t_fsm    (fsm_thread,     std::ref(state));
 
-    std::cout << "[main] all threads running\n";
-    std::cout << "[main] *** Press W to start the mission ***\n";
+    std::cout << "[main] all threads running – press 'w' to start mission, Ctrl+C to stop\n";
 
-    // ── Raw terminal: read W without requiring Enter ──────────────────────────
-    if (tcgetattr(STDIN_FILENO, &g_orig_termios) == 0) {
-        struct termios raw = g_orig_termios;
-        raw.c_lflag &= ~(ICANON | ECHO);  // no line buffer, no echo
-        raw.c_cc[VMIN]  = 1;
-        raw.c_cc[VTIME] = 0;
-        tcsetattr(STDIN_FILENO, TCSANOW, &raw);
-        g_raw_mode = true;
-    }
-
-    while (!state.shutdown.load()) {
-        char c = '\0';
-        if (read(STDIN_FILENO, &c, 1) == 1) {
-            if (c == 'w' || c == 'W') {
-                restore_terminal();
-                std::cout << "[main] W pressed – GO\n";
-                state.start_requested.store(true);
-                break;
-            }
-            if (c == 3) {  // Ctrl+C
-                restore_terminal();
-                state.shutdown.store(true);
-                break;
+    // Keyboard input thread: 'w' starts the mission, Ctrl+C (SIGINT) stops
+    std::thread t_kbd([&state]() {
+        char c;
+        while (!state.shutdown.load()) {
+            if (std::cin.get(c)) {
+                if (c == 'w' || c == 'W') {
+                    std::cout << "[main] 'w' pressed – mission starting\n";
+                    state.mission_started.store(true);
+                }
             }
         }
-    }
+    });
+    t_kbd.detach();
 
     // Wait for shutdown
     while (!state.shutdown.load()) {

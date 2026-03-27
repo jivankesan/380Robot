@@ -38,33 +38,33 @@ static constexpr int SERVO2_OPEN = 55;     // gripper: open
 static constexpr int SERVO2_CLOSED = 140;  // gripper: closed
 
 // ── Line-follow PD controller ────────────────────────────────────────────────
+// ROI is now a lookahead window (y: 0.10–0.60) so errors are larger and
+// arrive earlier. Gains raised accordingly; KD raised for damping to prevent
+// overshoot from acting on predicted-future error rather than current error.
 static constexpr double CONTROL_RATE_HZ = 100.0;
-static constexpr double KP_LATERAL = 1.6;
-static constexpr double KD_LATERAL = 10;
-static constexpr double KP_HEADING = 1.9;
+static constexpr double KP_LATERAL = 2.5;
+static constexpr double KD_LATERAL = 6.0;
+static constexpr double KP_HEADING = 1.8;
 static constexpr double KD_HEADING = 8.0;
-static constexpr double BASE_SPEED_MPS = 1.0;   // was 0.99 – run at motor max on straights
-static constexpr double MAX_LIN_VEL_MPS = 1.0;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
+static constexpr double BASE_SPEED_MPS = 0.99;
+static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
-static constexpr double MAX_ANG_VEL_RPS = 2.5;
-static constexpr double HEADING_BRAKE_GAIN = 0.05;
-static constexpr double TURN_SPEED_GAIN = 1.8;
+static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper corrections
+static constexpr double HEADING_BRAKE_GAIN = 1.5;
+static constexpr double TURN_SPEED_GAIN = 3.8;
 static constexpr double MIN_TURN_SPEED_MPS = 0.12;
 static constexpr double TURN_OMEGA_DEADBAND = 0.1;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
-static constexpr double SP_V_MAX = 0.9;
-static constexpr double SP_V_MIN = 0.13;
-static constexpr double SP_A_MAX_ACCEL = 2.5;
-static constexpr double SP_A_MAX_DECEL = 20.0;
-static constexpr double SP_ALPHA_MAX = 30.0;  // near-instant omega tracking – steering must be fast
-static constexpr double SP_STARTUP_ACCEL =
-  0.8;                                         // m/s² – cold-start ramp rate (~1.3s to full speed)
-static constexpr double SP_K_CURVATURE = 3.0;  // predictive: brakes before turn apex
-static constexpr double SP_K_OMEGA_CMD = 2.5;  // reactive: brakes on smoothed turn rate
-static constexpr double SP_K_ERROR = 0.0;      // unused
-static constexpr double SP_K_HEADING = 0.0;    // unused
+static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
+static constexpr double SP_V_MIN = 0.1;
+static constexpr double SP_A_MAX_ACCEL = 9.9;
+static constexpr double SP_A_MAX_DECEL = 15.7;  // was 6.0  – brake faster into turns
+static constexpr double SP_ALPHA_MAX = 8.9;     // was 4.0  – angular rate can change faster
+static constexpr double SP_K_CURVATURE = 0.8;   // was 0.3
+static constexpr double SP_K_ERROR = 0.4;       // was 0.3
+static constexpr double SP_K_HEADING = 0.4;     // was 0.3
 
 // ── Post-drop safe params (switched at runtime after package is released) ────
 // These replace the aggressive outbound values for the return leg.
@@ -96,7 +96,7 @@ static constexpr double GREEN_ROI_Y_END = 0.70;  // top 70% – box spans past h
 
 // ── FSM ──────────────────────────────────────────────────────────────────────
 static constexpr double FSM_RATE_HZ = 20.0;
-static constexpr double PICKUP_DRIVE_TIME_S = 0.23;     // drive forward after blue seen
+static constexpr double PICKUP_DRIVE_TIME_S = 0.26;     // drive forward after blue seen
 static constexpr double PICKUP_DRIVE_SPEED_MPS = 0.15;  // slow creep toward target
 static constexpr double PICKUP_CLOSE_TIME_S = 0.1;
 static constexpr double PICKUP_ROTATE_TIME_S = 0.1;
@@ -107,7 +107,7 @@ static constexpr double LINE_LOSS_TIMEOUT_S = 3.0;
 // Drop zone approach: turn right 30deg, then drive forward into box
 // Drop zone: stop, turn hard right, then drop
 static constexpr double DROP_ZONE_TURN_OMEGA_RPS = -PICKUP_SPIN_OMEGA_RPS;  // opposite of 180 spin
-static constexpr double DROP_ZONE_TURN_TIME_S = 0.31;                       // tune to adjust angle
+static constexpr double DROP_ZONE_TURN_TIME_S = 0.25;                       // tune to adjust angle
 
 // Drop sequence
 static constexpr double DROP_UNROTATE_TIME_S = 0.1;  // time to rotate arm back to HOME

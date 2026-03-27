@@ -25,9 +25,8 @@ void control_thread(SharedState& state) {
     TimePoint last_valid_line_time = Clock::now();
 
     // ── Speed profiler state ─────────────────────────────────────────────────
-    double v_cmd      = 0.0;
-    double omega_cmd  = 0.0;
-    double v_max_ramp = 0.0;   // startup ramp cap – resets to SP_V_MIN whenever robot stops
+    double v_cmd     = 0.0;
+    double omega_cmd = 0.0;
 
     // ── Safety state ─────────────────────────────────────────────────────────
     TimePoint last_cmd_received   = Clock::now();  // updated any time we have a non-zero cmd
@@ -61,6 +60,7 @@ void control_thread(SharedState& state) {
             direct_r     = state.direct_pwm_right;
         }
 
+        // ── Safe-mode param selection (post-drop return leg) ─────────────────
         const bool safe = state.post_drop_mode.load();
         const double p_base_speed      = safe ? BASE_SPEED_MPS_SAFE      : BASE_SPEED_MPS;
         const double p_heading_brake   = safe ? HEADING_BRAKE_GAIN_SAFE  : HEADING_BRAKE_GAIN;
@@ -128,9 +128,10 @@ void control_thread(SharedState& state) {
                           + KP_HEADING * hdg + KD_HEADING * d_hdg;
                 raw_omega = std::clamp(raw_omega, -MAX_ANG_VEL_RPS, MAX_ANG_VEL_RPS);
 
-                // Speed is controlled entirely by the profiler via omega_cmd.
-                // raw_v here is just "intent to move forward" – profiler handles braking.
-                raw_v = p_base_speed;
+                double excess = std::max(0.0, std::abs(raw_omega) - p_turn_deadband);
+                double brake  = p_heading_brake * std::abs(hdg);
+                raw_v = p_base_speed - brake - p_turn_speed_gain * excess;
+                raw_v = std::clamp(raw_v, MIN_TURN_SPEED_MPS, MAX_LIN_VEL_MPS);
 
                 last_lateral = lat;
                 last_heading = hdg;
@@ -154,27 +155,19 @@ void control_thread(SharedState& state) {
             double v_target = SP_V_MAX;
 
             if (line.valid) {
-                // Curvature gives predictive lookahead braking before the turn.
-                // omega_cmd (rate-limited) gives smooth reactive braking in the turn.
-                double curv         = std::abs(line.curvature_1pm);
-                double omega_excess = std::max(0.0, std::abs(omega_cmd) - p_turn_deadband);
+                double curv = std::abs(line.curvature_1pm);
+                double lerr = std::abs(line.lateral_error_m);
+                double herr = std::abs(line.heading_error_rad);
                 v_target = SP_V_MAX
                          - p_k_curv       * curv
-                         - SP_K_OMEGA_CMD * omega_excess;
+                         - SP_K_ERROR     * lerr
+                         - SP_K_HEADING   * herr;
             }
-            // Startup ramp: cap v_target so the robot builds speed gradually from rest.
-            // Resets whenever robot stops, so each cold-start gets a gentle launch.
-            if (v_cmd < 0.05) v_max_ramp = SP_V_MIN;
-            v_max_ramp = std::min(v_max_ramp + SP_STARTUP_ACCEL * dt, SP_V_MAX);
-            v_target = std::min(v_target, v_max_ramp);
 
+            if (raw_v < v_target) v_target = raw_v;
             v_target = std::clamp(v_target, SP_V_MIN, SP_V_MAX);
 
-            // Only engage decel if target is meaningfully below current cmd.
-            // This prevents sensor noise and small PD fluctuations on straights
-            // from triggering full deceleration every tick (which causes jerk).
-            bool should_decel = (v_target < v_cmd - 0.02);
-            double a_lim = should_decel ? p_decel : p_accel;
+            double a_lim = (v_target < v_cmd) ? p_decel : p_accel;
             double dv    = std::clamp(v_target - v_cmd, -a_lim * dt, a_lim * dt);
             v_cmd = std::clamp(v_cmd + dv, 0.0, SP_V_MAX);
 
