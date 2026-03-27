@@ -60,10 +60,10 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 // ── Speed profiler ───────────────────────────────────────────────────────────
 static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double SP_V_MIN = 0.13;
-static constexpr double SP_A_MAX_ACCEL = 5.0;
-static constexpr double SP_A_MAX_DECEL = 11.0;
+static constexpr double SP_A_MAX_ACCEL = 10.0;
+static constexpr double SP_A_MAX_DECEL = 20.0;
 static constexpr double SP_ALPHA_MAX = 5.0;
-static constexpr double SP_K_CURVATURE = 0.6;
+static constexpr double SP_K_CURVATURE = 2.0;
 static constexpr double SP_K_ERROR = 0.1;
 static constexpr double SP_K_HEADING = 0.0;
 
