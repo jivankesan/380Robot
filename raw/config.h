@@ -26,7 +26,7 @@ static constexpr int SPIN_MIN_PWM = 40;  // minimum spin PWM
 static constexpr int SPIN_TICKS = 5;  // ticks per side before alternating (at 50 Hz = 100 ms/side)
 
 // Motor calibration – reduce the gain of the faster wheel until both match
-static constexpr double LEFT_MOTOR_GAIN = 1.00;
+static constexpr double LEFT_MOTOR_GAIN = 1.0;
 static constexpr double RIGHT_MOTOR_GAIN = 1.0;
 static constexpr bool LEFT_REVERSED = false;
 static constexpr bool RIGHT_REVERSED = false;
@@ -39,7 +39,7 @@ static constexpr int SERVO2_CLOSED = 140;  // gripper: closed
 
 // ── Line-follow PD controller ────────────────────────────────────────────────
 static constexpr double CONTROL_RATE_HZ = 100.0;
-static constexpr double KP_LATERAL = 2.5;
+static constexpr double KP_LATERAL = 3;
 static constexpr double KD_LATERAL = 6.0;
 static constexpr double KP_HEADING = 1.8;
 static constexpr double KD_HEADING = 8.0;
@@ -59,7 +59,8 @@ static constexpr double SP_V_MIN = 0.13;
 static constexpr double SP_A_MAX_ACCEL = 6.0;
 static constexpr double SP_A_MAX_DECEL = 20.0;
 static constexpr double SP_ALPHA_MAX = 5.0;
-static constexpr double SP_STARTUP_ACCEL = 1.5;  // m/s² – cold-start ramp rate (~0.7s to full speed)
+static constexpr double SP_STARTUP_ACCEL =
+  1.5;                                         // m/s² – cold-start ramp rate (~0.7s to full speed)
 static constexpr double SP_K_CURVATURE = 1.5;  // predictive: brakes before turn apex
 static constexpr double SP_K_OMEGA_CMD = 1.0;  // reactive: brakes on smoothed turn rate
 static constexpr double SP_K_ERROR = 0.0;      // unused
