@@ -52,9 +52,9 @@ static constexpr double MIN_LIN_VEL_MPS = 0.08;
 static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper corrections
 static constexpr double HEADING_BRAKE_GAIN =
   1.0;  // was 1.6 – less straight-line speed bleed from heading
-static constexpr double TURN_SPEED_GAIN = 4.0;
+static constexpr double TURN_SPEED_GAIN = 2.0;
 static constexpr double MIN_TURN_SPEED_MPS = 0.12;
-static constexpr double TURN_OMEGA_DEADBAND = 0.1;
+static constexpr double TURN_OMEGA_DEADBAND = 0.20;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 
 // ── Speed profiler ───────────────────────────────────────────────────────────
@@ -64,8 +64,8 @@ static constexpr double SP_A_MAX_ACCEL = 5.0;
 static constexpr double SP_A_MAX_DECEL = 11.0;
 static constexpr double SP_ALPHA_MAX = 5.0;
 static constexpr double SP_K_CURVATURE = 1.2;
-static constexpr double SP_K_ERROR = 0.2;
-static constexpr double SP_K_HEADING = 0.2;
+static constexpr double SP_K_ERROR = 0.1;
+static constexpr double SP_K_HEADING = 0.0;
 
 // ── Post-drop safe params (switched at runtime after package is released) ────
 // These replace the aggressive outbound values for the return leg.
