@@ -39,7 +39,7 @@ static constexpr int SERVO2_CLOSED = 140;  // gripper: closed
 
 // ── Line-follow PD controller ────────────────────────────────────────────────
 static constexpr double CONTROL_RATE_HZ = 100.0;
-static constexpr double KP_LATERAL = 2.9;
+static constexpr double KP_LATERAL = 2.5;
 static constexpr double KD_LATERAL = 7;
 static constexpr double KP_HEADING = 1.9;
 static constexpr double KD_HEADING = 8.0;
@@ -56,7 +56,7 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 // ── Speed profiler ───────────────────────────────────────────────────────────
 static constexpr double SP_V_MAX = 0.9;
 static constexpr double SP_V_MIN = 0.13;
-static constexpr double SP_A_MAX_ACCEL = 1.5;
+static constexpr double SP_A_MAX_ACCEL = 2.0;
 static constexpr double SP_A_MAX_DECEL = 20.0;
 static constexpr double SP_ALPHA_MAX = 30.0;  // near-instant omega tracking – steering must be fast
 static constexpr double SP_STARTUP_ACCEL =
