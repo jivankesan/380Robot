@@ -61,7 +61,7 @@ static constexpr double SP_A_MAX_DECEL = 20.0;
 static constexpr double SP_ALPHA_MAX = 30.0;  // near-instant omega tracking – steering must be fast
 static constexpr double SP_STARTUP_ACCEL =
   0.8;                                         // m/s² – cold-start ramp rate (~1.3s to full speed)
-static constexpr double SP_K_CURVATURE = 5.0;  // predictive: brakes before turn apex
+static constexpr double SP_K_CURVATURE = 3.0;  // predictive: brakes before turn apex
 static constexpr double SP_K_OMEGA_CMD = 2.5;  // reactive: brakes on smoothed turn rate
 static constexpr double SP_K_ERROR = 0.0;      // unused
 static constexpr double SP_K_HEADING = 0.0;    // unused

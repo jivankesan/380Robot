@@ -180,7 +180,8 @@ def _run_line_detection(frame) -> str:
     image_cx        = roi_w / 2.0 + LINE_CENTER_X_OFFSET
     lateral_error_m = (cx - image_cx) * LINE_PIXELS_TO_M
 
-    heading_rad = 0.0
+    heading_rad   = 0.0
+    curvature_1pm = 0.0
     mid_y = roi_h // 2
     M_top = cv2.moments(mask[:mid_y, :])
     M_bot = cv2.moments(mask[mid_y:, :])
@@ -188,8 +189,12 @@ def _run_line_detection(frame) -> str:
         cx_top      = M_top['m10'] / M_top['m00']
         cx_bot      = M_bot['m10'] / M_bot['m00']
         heading_rad = float(np.arctan2(cx_top - cx_bot, float(mid_y)))
+        # Curvature: second difference of centroid x across top/overall/bottom.
+        # Positive = line bending one way, negative = other. Normalised by roi_w
+        # so the value is dimensionless (~0 on straights, ±0.3 on tight turns).
+        curvature_1pm = float(cx_top - 2.0 * cx + cx_bot) / roi_w
 
-    return f"LINE,1,{lateral_error_m:.5f},{heading_rad:.5f},0.0"
+    return f"LINE,1,{lateral_error_m:.5f},{heading_rad:.5f},{curvature_1pm:.5f}"
 
 
 def line_thread(buf: FrameBuffer, sock: VisionSocket, stop: threading.Event):
