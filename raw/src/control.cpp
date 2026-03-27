@@ -169,7 +169,7 @@ void control_thread(SharedState& state) {
             // Only engage decel if target is meaningfully below current cmd.
             // This prevents sensor noise and small PD fluctuations on straights
             // from triggering full deceleration every tick (which causes jerk).
-            bool should_decel = (v_target < v_cmd - 0.05);
+            bool should_decel = (v_target < v_cmd - 0.06);
             double a_lim = should_decel ? p_decel : p_accel;
             double dv    = std::clamp(v_target - v_cmd, -a_lim * dt, a_lim * dt);
             v_cmd = std::clamp(v_cmd + dv, 0.0, SP_V_MAX);
