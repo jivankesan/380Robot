@@ -40,7 +40,7 @@ SOCKET_PATH = "/tmp/robot_vision.sock"
 # Line detector
 LINE_ROI_Y_START         = 0.1
 LINE_ROI_Y_END           = 0.6
-LINE_ROI_X_START         = 0.10
+LINE_ROI_X_START         = 0.05
 LINE_ROI_X_END           = 0.90
 LINE_H_MIN,  LINE_H_MAX  = 0,   10    # lower red (H wraps at 0)
 LINE_H2_MIN, LINE_H2_MAX = 160, 180   # upper red
