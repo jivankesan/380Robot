@@ -39,7 +39,7 @@ static constexpr int SERVO2_CLOSED = 140;  // gripper: closed
 
 // ── Line-follow PD controller ────────────────────────────────────────────────
 static constexpr double CONTROL_RATE_HZ = 100.0;
-static constexpr double KP_LATERAL = 2.5;
+static constexpr double KP_LATERAL = 4.0;
 static constexpr double KD_LATERAL = 6.0;
 static constexpr double KP_HEADING = 1.8;
 static constexpr double KD_HEADING = 8.0;
@@ -58,7 +58,7 @@ static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RAD
 static constexpr double SP_V_MIN = 0.13;
 static constexpr double SP_A_MAX_ACCEL = 3.0;
 static constexpr double SP_A_MAX_DECEL = 20.0;
-static constexpr double SP_ALPHA_MAX = 10.0;
+static constexpr double SP_ALPHA_MAX = 30.0;  // near-instant omega tracking – steering must be fast
 static constexpr double SP_STARTUP_ACCEL =
   0.8;                                         // m/s² – cold-start ramp rate (~1.3s to full speed)
 static constexpr double SP_K_CURVATURE = 3.0;  // predictive: brakes before turn apex
