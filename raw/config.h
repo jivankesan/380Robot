@@ -51,7 +51,7 @@ static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WH
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
 static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper corrections
 static constexpr double HEADING_BRAKE_GAIN =
-  1.0;  // was 1.6 – less straight-line speed bleed from heading
+  0.0;  // zeroed – heading already penalizes speed via raw_omega excess term
 static constexpr double TURN_SPEED_GAIN = 2.0;
 static constexpr double MIN_TURN_SPEED_MPS = 0.12;
 static constexpr double TURN_OMEGA_DEADBAND = 0.20;
@@ -63,7 +63,7 @@ static constexpr double SP_V_MIN = 0.13;
 static constexpr double SP_A_MAX_ACCEL = 5.0;
 static constexpr double SP_A_MAX_DECEL = 11.0;
 static constexpr double SP_ALPHA_MAX = 5.0;
-static constexpr double SP_K_CURVATURE = 1.2;
+static constexpr double SP_K_CURVATURE = 0.6;
 static constexpr double SP_K_ERROR = 0.1;
 static constexpr double SP_K_HEADING = 0.0;
 
