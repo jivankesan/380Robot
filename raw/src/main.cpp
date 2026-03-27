@@ -29,6 +29,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <signal.h>
+#include <termios.h>
 
 #include <atomic>
 #include <chrono>
@@ -223,17 +224,28 @@ int main(int argc, char* argv[]) {
 
     std::cout << "[main] all threads running – press 'w' to start mission, Ctrl+C to stop\n";
 
-    // Keyboard input thread: 'w' starts the mission, Ctrl+C (SIGINT) stops
+    // Keyboard input thread: 'w' starts the mission (no Enter needed).
+    // Puts stdin into raw/non-blocking mode so single keypresses are read immediately.
     std::thread t_kbd([&state]() {
+        // Save old terminal settings and switch to raw mode
+        struct termios oldt, newt;
+        tcgetattr(STDIN_FILENO, &oldt);
+        newt = oldt;
+        newt.c_lflag &= ~(ICANON | ECHO);  // disable line buffering and echo
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
         char c;
         while (!state.shutdown.load()) {
-            if (std::cin.get(c)) {
+            if (read(STDIN_FILENO, &c, 1) == 1) {
                 if (c == 'w' || c == 'W') {
                     std::cout << "[main] 'w' pressed – mission starting\n";
                     state.mission_started.store(true);
                 }
             }
         }
+
+        // Restore terminal on exit
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
     });
     t_kbd.detach();
 
