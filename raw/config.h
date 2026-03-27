@@ -59,9 +59,10 @@ static constexpr double SP_V_MIN = 0.13;
 static constexpr double SP_A_MAX_ACCEL = 8.0;
 static constexpr double SP_A_MAX_DECEL = 20.0;
 static constexpr double SP_ALPHA_MAX = 5.0;
-static constexpr double SP_K_CURVATURE = 4.0;
-static constexpr double SP_K_ERROR = 0.1;
-static constexpr double SP_K_HEADING = 0.0;
+static constexpr double SP_K_CURVATURE = 1.5;   // predictive: brakes before turn apex
+static constexpr double SP_K_OMEGA_CMD = 1.0;   // reactive: brakes on smoothed turn rate
+static constexpr double SP_K_ERROR = 0.0;        // unused
+static constexpr double SP_K_HEADING = 0.0;      // unused
 
 // ── Post-drop safe params (switched at runtime after package is released) ────
 // These replace the aggressive outbound values for the return leg.

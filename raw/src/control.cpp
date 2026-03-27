@@ -127,10 +127,9 @@ void control_thread(SharedState& state) {
                           + KP_HEADING * hdg + KD_HEADING * d_hdg;
                 raw_omega = std::clamp(raw_omega, -MAX_ANG_VEL_RPS, MAX_ANG_VEL_RPS);
 
-                double excess = std::max(0.0, std::abs(raw_omega) - p_turn_deadband);
-                double brake  = p_heading_brake * std::abs(hdg);
-                raw_v = p_base_speed - brake - p_turn_speed_gain * excess;
-                raw_v = std::clamp(raw_v, MIN_TURN_SPEED_MPS, MAX_LIN_VEL_MPS);
+                // Speed is controlled entirely by the profiler via omega_cmd.
+                // raw_v here is just "intent to move forward" – profiler handles braking.
+                raw_v = p_base_speed;
 
                 last_lateral = lat;
                 last_heading = hdg;
@@ -154,16 +153,14 @@ void control_thread(SharedState& state) {
             double v_target = SP_V_MAX;
 
             if (line.valid) {
-                double curv = std::abs(line.curvature_1pm);
-                double lerr = std::abs(line.lateral_error_m);
-                double herr = std::abs(line.heading_error_rad);
+                // Curvature gives predictive lookahead braking before the turn.
+                // omega_cmd (rate-limited) gives smooth reactive braking in the turn.
+                double curv         = std::abs(line.curvature_1pm);
+                double omega_excess = std::max(0.0, std::abs(omega_cmd) - p_turn_deadband);
                 v_target = SP_V_MAX
-                         - p_k_curv     * curv
-                         - SP_K_ERROR   * lerr
-                         - SP_K_HEADING * herr;
+                         - p_k_curv       * curv
+                         - SP_K_OMEGA_CMD * omega_excess;
             }
-
-            if (raw_v < v_target) v_target = raw_v;
             v_target = std::clamp(v_target, SP_V_MIN, SP_V_MAX);
 
             // Only engage decel if target is meaningfully below current cmd.
