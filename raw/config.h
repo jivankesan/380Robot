@@ -47,7 +47,7 @@ static constexpr double BASE_SPEED_MPS = 1.056;
 static constexpr double MAX_LIN_VEL_MPS = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
 static constexpr double MAX_ANG_VEL_RPS = 2.5;  // was 1.6  – allow sharper corrections
-static constexpr double HEADING_BRAKE_GAIN = 1.0;
+static constexpr double HEADING_BRAKE_GAIN = 0.7;
 static constexpr double TURN_SPEED_GAIN = 4.0;
 static constexpr double MIN_TURN_SPEED_MPS = 0.12;
 static constexpr double TURN_OMEGA_DEADBAND = 0.1;
@@ -59,7 +59,7 @@ static constexpr double SP_V_MIN = 0.1;
 static constexpr double SP_A_MAX_ACCEL = 5.0;
 static constexpr double SP_A_MAX_DECEL = 10.0;
 static constexpr double SP_ALPHA_MAX = 5.0;
-static constexpr double SP_K_CURVATURE = 0.8;
+static constexpr double SP_K_CURVATURE = 2.0;
 static constexpr double SP_K_ERROR = 0.2;
 static constexpr double SP_K_HEADING = 0.2;
 
