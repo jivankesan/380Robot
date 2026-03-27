@@ -56,7 +56,7 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 // ── Speed profiler ───────────────────────────────────────────────────────────
 static constexpr double SP_V_MAX = 1.056;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double SP_V_MIN = 0.13;
-static constexpr double SP_A_MAX_ACCEL = 3.0;
+static constexpr double SP_A_MAX_ACCEL = 1.5;
 static constexpr double SP_A_MAX_DECEL = 20.0;
 static constexpr double SP_ALPHA_MAX = 30.0;  // near-instant omega tracking – steering must be fast
 static constexpr double SP_STARTUP_ACCEL =
