@@ -40,7 +40,7 @@ static constexpr int SERVO2_CLOSED = 140;  // gripper: closed
 // ── Line-follow PD controller ────────────────────────────────────────────────
 static constexpr double CONTROL_RATE_HZ = 100.0;
 static constexpr double KP_LATERAL = 2.3;
-static constexpr double KD_LATERAL = 8.5;
+static constexpr double KD_LATERAL = 9;
 static constexpr double KP_HEADING = 1.9;
 static constexpr double KD_HEADING = 8.0;
 static constexpr double BASE_SPEED_MPS = 1.0;   // was 0.99 – run at motor max on straights
