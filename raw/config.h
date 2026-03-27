@@ -26,7 +26,7 @@ static constexpr int SPIN_MIN_PWM = 40;  // minimum spin PWM
 static constexpr int SPIN_TICKS = 5;  // ticks per side before alternating (at 50 Hz = 100 ms/side)
 
 // Motor calibration – reduce the gain of the faster wheel until both match
-static constexpr double LEFT_MOTOR_GAIN = 1.0;
+static constexpr double LEFT_MOTOR_GAIN = 1.05;
 static constexpr double RIGHT_MOTOR_GAIN = 1.0;
 static constexpr bool LEFT_REVERSED = false;
 static constexpr bool RIGHT_REVERSED = false;
@@ -43,8 +43,8 @@ static constexpr double KP_LATERAL = 2.3;
 static constexpr double KD_LATERAL = 7.5;
 static constexpr double KP_HEADING = 1.9;
 static constexpr double KD_HEADING = 8.0;
-static constexpr double BASE_SPEED_MPS = 0.99;   // was 0.99 – run at motor max on straights
-static constexpr double MAX_LIN_VEL_MPS = 0.99;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
+static constexpr double BASE_SPEED_MPS = 1.0;   // was 0.99 – run at motor max on straights
+static constexpr double MAX_LIN_VEL_MPS = 1.0;  // MOTOR_MAX_RPM * 2π/60 * WHEEL_RADIUS_M
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
 static constexpr double MAX_ANG_VEL_RPS = 2.5;
 static constexpr double HEADING_BRAKE_GAIN = 0.1;
