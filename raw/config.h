@@ -39,7 +39,7 @@ static constexpr int SERVO2_CLOSED = 140;  // gripper: closed
 
 // ── Line-follow PD controller ────────────────────────────────────────────────
 static constexpr double CONTROL_RATE_HZ = 100.0;
-static constexpr double KP_LATERAL = 1.7;
+static constexpr double KP_LATERAL = 1.6;
 static constexpr double KD_LATERAL = 9.5;
 static constexpr double KP_HEADING = 1.9;
 static constexpr double KD_HEADING = 8.0;
