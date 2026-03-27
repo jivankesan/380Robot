@@ -12,8 +12,6 @@
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
-// ── State enum ────────────────────────────────────────────────────────────────
-
 enum class State {
     INIT,
     FOLLOW_LINE_SEARCH,
@@ -45,8 +43,6 @@ static std::string to_str(State s) {
     }
 }
 
-// ── FSM context ───────────────────────────────────────────────────────────────
-
 struct FsmCtx {
     State     current     = State::INIT;
     TimePoint state_start = Clock::now();
@@ -63,7 +59,6 @@ struct FsmCtx {
     // For FINAL_FOLLOW: track when line was last valid to detect line end
     TimePoint last_line_seen_final = Clock::now();
 
-    // ── Mission timer ──────────────────────────────────────────────────────────
     TimePoint mission_start;
     bool      mission_running      = false;
     double    mission_last_print_s = -1.0;
@@ -117,8 +112,6 @@ struct FsmCtx {
     }
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 static void set_line_follow(SharedState& s) {
     std::lock_guard<std::mutex> lk(s.mtx);
     s.control_mode = ControlMode::LINE_FOLLOW;
@@ -145,8 +138,6 @@ static void send_claw(SharedState& s, ClawMode mode) {
     s.claw_mode        = mode;
     s.claw_cmd_pending = true;
 }
-
-// ── State handlers ────────────────────────────────────────────────────────────
 
 static void handle_init(FsmCtx& ctx, SharedState& state) {
     stop(state);
@@ -223,7 +214,6 @@ static void handle_return_follow_line(FsmCtx& ctx, SharedState& state) {
     set_line_follow(state);
     send_claw(state, ClawMode::HOLD);
 
-    // Enable green detection the moment we enter this state
     if (!state.green_detect_enabled.load()) {
         state.green_detect_enabled.store(true);
         std::cout << "[fsm] green detection enabled\n";
@@ -334,8 +324,6 @@ static void handle_failsafe(FsmCtx& /*ctx*/, SharedState& state) {
     send_claw(state, ClawMode::OPEN);
 }
 
-// ── Main thread function ───────────────────────────────────────────────────────
-
 void fsm_thread(SharedState& state) {
     const double dt     = 1.0 / FSM_RATE_HZ;
     const auto   period = duration_cast<nanoseconds>(duration<double>(dt));
@@ -347,7 +335,6 @@ void fsm_thread(SharedState& state) {
         std::this_thread::sleep_until(next_tick);
         next_tick += period;
 
-        // ── Read shared state ────────────────────────────────────────────────
         {
             std::lock_guard<std::mutex> lk(state.mtx);
             ctx.line      = state.line_obs;
@@ -359,13 +346,11 @@ void fsm_thread(SharedState& state) {
 
         if (ctx.line.valid) ctx.last_line_valid_time = Clock::now();
 
-        // Update FSM state string for logging
         {
             std::lock_guard<std::mutex> lk(state.mtx);
             state.fsm_state = to_str(ctx.current);
         }
 
-        // ── Global failsafe ──────────────────────────────────────────────────
         if (ctx.estop && ctx.current != State::FAILSAFE_STOP) {
             ctx.transition(State::FAILSAFE_STOP);
         }
@@ -386,7 +371,6 @@ void fsm_thread(SharedState& state) {
 
         ctx.tick_timer();
 
-        // ── Dispatch ────────────────────────────────────────────────────────
         switch (ctx.current) {
             case State::INIT:               handle_init(ctx, state);               break;
             case State::FOLLOW_LINE_SEARCH: handle_follow_line_search(ctx, state); break;

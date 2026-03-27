@@ -19,20 +19,16 @@ void control_thread(SharedState& state) {
     const auto period = duration_cast<nanoseconds>(duration<double>(dt));
     auto next_tick = Clock::now() + period;
 
-    // ── Line-follow PD state ─────────────────────────────────────────────────
     double last_lateral  = 0.0;
     double last_heading  = 0.0;
     TimePoint last_valid_line_time = Clock::now();
 
-    // ── Speed profiler state ─────────────────────────────────────────────────
     double v_cmd     = 0.0;
     double omega_cmd = 0.0;
 
-    // ── Safety state ─────────────────────────────────────────────────────────
-    TimePoint last_cmd_received   = Clock::now();  // updated any time we have a non-zero cmd
+    TimePoint last_cmd_received   = Clock::now();
     TimePoint last_hw_status_time = Clock::now();
 
-    // ── Spin alternation state (pure-spin mode) ───────────────────────────────
     bool spin_toggle   = false;
     int  spin_tick_cnt = 0;
 
@@ -40,7 +36,6 @@ void control_thread(SharedState& state) {
         std::this_thread::sleep_until(next_tick);
         next_tick += period;
 
-        // ── Read shared state ────────────────────────────────────────────────
         LineObs   line;
         HwStatus  hw;
         ControlMode mode;
@@ -71,7 +66,6 @@ void control_thread(SharedState& state) {
         const double p_alpha           = safe ? SP_ALPHA_MAX_SAFE        : SP_ALPHA_MAX;
         const double p_k_curv          = safe ? SP_K_CURVATURE_SAFE      : SP_K_CURVATURE;
 
-        // ── Safety checks ────────────────────────────────────────────────────
         bool hw_timeout  = duration_cast<duration<double>>(Clock::now() - hw.timestamp).count()
                            > SAFETY_HW_TIMEOUT_S;
         bool hw_estop    = hw.estop;
@@ -93,7 +87,6 @@ void control_thread(SharedState& state) {
             state.estop = false;
         }
 
-        // ── Direct PWM passthrough ───────────────────────────────────────────
         if (mode == ControlMode::DIRECT_PWM) {
             std::lock_guard<std::mutex> lk(state.mtx);
             state.motor_pwm_left  = direct_l;
@@ -101,7 +94,6 @@ void control_thread(SharedState& state) {
             continue;
         }
 
-        // ── Compute raw (v, omega) ───────────────────────────────────────────
         double raw_v     = 0.0;
         double raw_omega = 0.0;
 
@@ -145,7 +137,6 @@ void control_thread(SharedState& state) {
             last_valid_line_time = Clock::now();
         }
 
-        // ── Speed profiler ───────────────────────────────────────────────────
         // Reverse bypasses the profiler completely – apply directly
         if (raw_v < 0.0) {
             v_cmd     = raw_v;
@@ -177,7 +168,6 @@ void control_thread(SharedState& state) {
             if (raw_v == 0.0) v_cmd = 0.0;
         }
 
-        // ── Twist → differential wheel PWM ──────────────────────────────────
         int pwm_l = 0, pwm_r = 0;
 
         if (std::abs(v_cmd) < 0.01 && std::abs(omega_cmd) > 0.1) {

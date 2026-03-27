@@ -17,8 +17,6 @@
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
 static int open_serial(const char* port, int baud) {
     int fd = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd < 0) return -1;
@@ -88,11 +86,10 @@ static void apply_claw(int fd, ClawMode mode) {
     }
 }
 
-// Parse one ASCII line from Arduino telemetry.
+// Decode one telemetry line from the Arduino.
 static void parse_line(const std::string& line, SharedState& state) {
     if (line.empty()) return;
 
-    // Split by ','
     std::vector<std::string> parts;
     std::stringstream ss(line);
     std::string tok;
@@ -118,8 +115,6 @@ static void parse_line(const std::string& line, SharedState& state) {
     }
 }
 
-// ── main thread function ───────────────────────────────────────────────────────
-
 void serial_thread(SharedState& state) {
     int fd = open_serial(SERIAL_PORT, SERIAL_BAUD);
     if (fd < 0) {
@@ -138,12 +133,10 @@ void serial_thread(SharedState& state) {
     std::string read_buf;
     char raw[256];
 
-    // Pure-spin alternation state (mirrors SerialBridgeNode)
     bool spin_toggle    = false;
     int  spin_tick_cnt  = 0;
 
     while (!state.shutdown.load()) {
-        // ── read incoming telemetry ──────────────────────────────────────
         if (fd >= 0) {
             ssize_t n = read(fd, raw, sizeof(raw) - 1);
             if (n > 0) {
@@ -157,7 +150,6 @@ void serial_thread(SharedState& state) {
             }
         }
 
-        // ── send motor command at CMD_RATE_HZ ────────────────────────────
         auto now = Clock::now();
         if (now >= next_cmd_tick) {
             next_cmd_tick += cmd_period;
@@ -178,23 +170,9 @@ void serial_thread(SharedState& state) {
                 if (claw_pending) state.claw_cmd_pending = false;
             }
 
-            // Handle claw
             if (claw_pending) apply_claw(fd, claw);
 
-            // Handle pure-spin alternation (same logic as SerialBridgeNode)
-            // pwm_l == 0 && pwm_r == 0 but the ControlThread encodes a spin
-            // request as a special convention: when ControlMode::MANUAL and
-            // linear≈0, angular≠0 the ControlThread sets motor_pwm_* to the
-            // raw spin values with alternation flags encoded in sign—but
-            // actually it's cleaner to re-derive here from cmd_v/cmd_omega
-            // since the serial thread owns the spin toggle state.
-            //
-            // Approach: ControlThread writes motor_pwm_* = INT32_MIN as a
-            // sentinel for "pure spin; derive here". But that's fragile.
-            // Instead: ControlThread always writes the final pwm values.
-            // The spin alternation logic lives in ControlThread (see control.cpp).
-            // Here we just send whatever was computed.
-
+            // Spin alternation is handled in control.cpp; just forward the result.
             send_motor(fd, pwm_l, pwm_r);
         }
 

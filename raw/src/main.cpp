@@ -1,22 +1,10 @@
-/**
- * main.cpp – entry point.
- *
- * Starts the vision.py subprocess, creates the Unix domain socket that
- * vision.py writes to, then launches three threads and waits.
- *
- * Thread layout:
- *   vision_socket_thread  – receives UDP datagrams from vision.py, updates SharedState
- *   serial_thread         – sends motor/claw commands to Arduino, reads telemetry
- *   control_thread        – PD line follow + speed profile → motor PWM
- *   fsm_thread            – task state machine
- *
- * Usage:
- *   ./robot [camera_source]
- *
- *   camera_source: integer (e.g. 0 for /dev/video0) or MJPEG URL.
- *                  Passed to vision.py as its first argument.
- *                  Defaults to 0 if omitted.
- */
+// main.cpp – entry point.
+//
+// Launches vision.py, binds the Unix socket it writes to, then spins up
+// four threads: vision_socket, serial, control, fsm.
+//
+// Usage: ./robot [camera_source]
+//   camera_source – index (0 → /dev/video0) or MJPEG URL; defaults to 0.
 
 #include "shared_state.h"
 #include "serial.h"
@@ -43,7 +31,6 @@
 
 using namespace std::chrono_literals;
 
-// ── Global shutdown flag (set by SIGINT handler) ─────────────────────────────
 static SharedState*  g_state_ptr  = nullptr;
 static struct termios g_orig_termios{};
 static bool           g_raw_mode  = false;
@@ -61,7 +48,6 @@ static void sigint_handler(int) {
     if (g_state_ptr) g_state_ptr->shutdown.store(true);
 }
 
-// ── Vision socket thread ─────────────────────────────────────────────────────
 // Receives lines from vision.py via a Unix domain SOCK_DGRAM socket.
 // Protocol:
 //   LINE,<valid>,<lateral_m>,<heading_rad>,<curvature_1pm>
@@ -169,12 +155,9 @@ static void vision_socket_thread(SharedState& state) {
     std::cout << "[vision_sock] thread exited\n";
 }
 
-// ── Launch vision.py as subprocess ────────────────────────────────────────────
-
 static pid_t launch_vision(const std::string& camera_src) {
-    // Resolve the directory containing the robot binary at runtime using
-    // /proc/self/exe — avoids relying on __FILE__ which is the compile-time
-    // path on the build machine and wrong when deployed to the Pi.
+    // Use /proc/self/exe so we find vision.py relative to the binary,
+    // not the compile-time __FILE__ path (wrong on the Pi after cross-compile).
     char exe_buf[4096] = {};
     ssize_t len = readlink("/proc/self/exe", exe_buf, sizeof(exe_buf) - 1);
     if (len < 0) {
@@ -183,7 +166,7 @@ static pid_t launch_vision(const std::string& camera_src) {
     }
     std::string exe_path(exe_buf, len);
 
-    // exe is at .../raw/robot  →  go up one level to .../raw/
+    // strip binary name → get parent dir
     size_t pos = exe_path.rfind('/');
     std::string base_dir = (pos != std::string::npos)
                            ? exe_path.substr(0, pos)
@@ -200,8 +183,6 @@ static pid_t launch_vision(const std::string& camera_src) {
     return pid;
 }
 
-// ── main ─────────────────────────────────────────────────────────────────────
-
 int main(int argc, char* argv[]) {
     std::string camera_src = "0";
     if (argc >= 2) camera_src = argv[1];
@@ -215,7 +196,7 @@ int main(int argc, char* argv[]) {
     sigaction(SIGINT, &sa, nullptr);
     sigaction(SIGTERM, &sa, nullptr);
 
-    // Start vision socket thread first so the socket exists before vision.py connects
+    // Socket must exist before vision.py tries to connect
     std::thread t_sock(vision_socket_thread, std::ref(state));
     std::this_thread::sleep_for(100ms);  // give socket thread time to bind
 
@@ -227,7 +208,7 @@ int main(int argc, char* argv[]) {
         std::cout << "[main] vision.py launched (pid=" << vision_pid << ")\n";
     }
 
-    // Start C++ threads
+    // Start worker threads
     std::thread t_serial (serial_thread,  std::ref(state));
     std::thread t_control(control_thread, std::ref(state));
     std::thread t_fsm    (fsm_thread,     std::ref(state));
@@ -235,7 +216,7 @@ int main(int argc, char* argv[]) {
     std::cout << "[main] all threads running\n";
     std::cout << "[main] *** Press W to start the mission ***\n";
 
-    // ── Raw terminal: read W without requiring Enter ──────────────────────────
+    // Raw terminal so W triggers immediately without Enter
     if (tcgetattr(STDIN_FILENO, &g_orig_termios) == 0) {
         struct termios raw = g_orig_termios;
         raw.c_lflag &= ~(ICANON | ECHO);
@@ -262,18 +243,16 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Wait for shutdown
     while (!state.shutdown.load()) {
         std::this_thread::sleep_for(100ms);
     }
 
-    // Kill vision subprocess
     if (vision_pid > 0) {
         kill(vision_pid, SIGTERM);
         waitpid(vision_pid, nullptr, 0);
     }
 
-    // Join threads
+    // Join in reverse dependency order
     t_fsm.join();
     t_control.join();
     t_serial.join();

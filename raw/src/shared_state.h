@@ -1,10 +1,7 @@
-/**
- * shared_state.h – all data shared between threads.
- *
- * Single mutex protects everything. Lock times are microseconds at
- * these rates (100 Hz control, 50 Hz serial, 20 Hz FSM), so a
- * coarse-grained lock is fine and avoids deadlocks.
- */
+// shared_state.h – cross-thread data.
+//
+// One mutex covers everything. At these rates (100/50/20 Hz) lock
+// contention is negligible and a single lock keeps things simple.
 #pragma once
 
 #include <atomic>
@@ -14,8 +11,6 @@
 
 using Clock    = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
-
-// ── Vision data (written by VisionSocketThread) ──────────────────────────────
 
 struct LineObs {
     bool  valid            = false;
@@ -32,11 +27,9 @@ struct Detection {
     float w         = 0.0f;
     float h         = 0.0f;
     float score     = 0.0f;
-    // class_name always "blue_circle" for this project, omitted for simplicity
+    // class_name omitted – always "blue_circle" in this project
     TimePoint timestamp = Clock::now();
 };
-
-// ── Hardware status (written by SerialThread) ─────────────────────────────────
 
 struct HwStatus {
     float   battery_v  = 12.0f;
@@ -45,8 +38,6 @@ struct HwStatus {
     bool    estop      = false;
     TimePoint timestamp = Clock::now();
 };
-
-// ── Control modes ─────────────────────────────────────────────────────────────
 
 enum class ControlMode {
     LINE_FOLLOW,  // PD controller uses vision line data
@@ -61,8 +52,6 @@ enum class ClawMode {
     ROTATE   = 3,
     UNROTATE = 4   // rotate arm back to HOME position
 };
-
-// ── Shared state ──────────────────────────────────────────────────────────────
 
 struct SharedState {
     std::mutex mtx;
