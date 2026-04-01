@@ -1,18 +1,3 @@
-"""
-track_viz.py - Visualise the robot course map.
-
-Tile geometry:
-  - Every tile is a 0.3 m × 0.3 m square piece of wood.
-  - Straight tile: red line runs straight down the centre.
-  - Turn tile: red arc, radius = 0.15 m (centre at inner tile corner).
-
-Course sequence (23 tiles):
-  5× straight, 1× right, 4× straight,
-  2× right + 2× left + 1× right  (S-curve),
-  2× straight, 1× right, 1× straight,
-  1× right, 1× straight, 1× left, 1× target
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -24,12 +9,11 @@ N = 60      # centerline sample-points per tile
 
 class TrackBuilder:
     def __init__(self):
-        self.pts        = []                    # dense centerline (x, y) points
-        self.joints     = [(0.0, 0.0, 0.0)]    # (x, y, heading) at every tile seam
-        self.tile_types = []                    # 'S', 'R', 'L', 'T' per tile
-        self.x = 0.0
-        self.y = 0.0
-        self.h = 0.0   # heading (rad), 0 = east
+        self.pts        = []
+        self.joints     = [(0.0, 0.0, 0.0)]  # (x, y, heading) at every tile seam
+        self.tile_types = []
+        self.x = self.y = 0.0
+        self.h = 0.0  # heading (rad), 0 = east
 
     def S(self, kind='S'):
         for i in range(1, N + 1):

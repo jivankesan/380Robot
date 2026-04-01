@@ -1,17 +1,8 @@
-/**
- * @file main.ino
- * @brief Arduino Mega 2560 firmware for 380Robot motor and claw control.
- *
- * Serial Protocol (115200 baud, ASCII, newline terminated):
- *
- * Commands (ROS -> Arduino):
- *   M,<left_pwm>,<right_pwm>\n   Motor command, PWM in [-255, 255]
- *   C,<servo>,<angle>\n           Claw command: servo 1=rotation, 2=gripper; angle in degrees
- *
- * Telemetry (Arduino -> ROS):
- *   T,<battery_mv>,<left_enc>,<right_enc>,<estop>\n
- *   E,<code>,<message>\n         Error message
- */
+// Serial protocol (115200 8N1):
+//   M,<left_pwm>,<right_pwm>\n          motor command, PWM in [-255, 255]
+//   C,<servo>,<angle>\n                 servo 1=rotation, 2=gripper; angle in degrees
+//   T,<battery_mv>,<left_enc>,<right_enc>,<estop>\n  telemetry (20 Hz)
+//   E,<code>,<message>\n                error
 
 #include <Servo.h>
 
@@ -59,10 +50,8 @@ bool estopActive = false;
 String inputBuffer = "";
 
 void setup() {
-  // Initialize serial
   Serial.begin(115200);
 
-  // Motor pins
   pinMode(MOTOR_STBY, OUTPUT);
   pinMode(LEFT_MOTOR_EN, OUTPUT);
   pinMode(LEFT_MOTOR_IN1, OUTPUT);
@@ -71,24 +60,15 @@ void setup() {
   pinMode(RIGHT_MOTOR_IN1, OUTPUT);
   pinMode(RIGHT_MOTOR_IN2, OUTPUT);
 
-  // Enable TB6612 (take out of standby)
   digitalWrite(MOTOR_STBY, HIGH);
-
-  // Stop motors initially
   stopMotors();
 
-  // Claw servos — start in open/horizontal position
   clawRotationServo.attach(CLAW_ROTATION_SERVO_PIN);
   clawRotationServo.write(CLAW_HORIZONTAL_POS);
   clawGripperServo.attach(CLAW_GRIPPER_SERVO_PIN);
   clawGripperServo.write(CLAW_OPEN_POS);
 
-  // Encoders not used with Elegoo Smart Car Shield
-  // (encoder pins conflict with motor driver pins on this shield)
-
-  // E-stop not used
-
-  // Battery monitoring
+  // Encoder pins conflict with motor driver on this shield — not used.
   pinMode(BATTERY_PIN, INPUT);
 
   lastCommandTime = millis();
@@ -98,7 +78,6 @@ void setup() {
 }
 
 void loop() {
-  // Read serial commands
   while (Serial.available() > 0) {
     char c = Serial.read();
     if (c == '\n') {
@@ -109,10 +88,8 @@ void loop() {
     }
   }
 
-  // E-stop not used on Uno
   estopActive = false;
 
-  // Watchdog - stop motors if no commands received
   unsigned long now = millis();
   if (now - lastCommandTime > WATCHDOG_TIMEOUT) {
     if (currentLeftPWM != 0 || currentRightPWM != 0) {
@@ -120,12 +97,10 @@ void loop() {
     }
   }
 
-  // E-stop override
   if (estopActive) {
     stopMotors();
   }
 
-  // Send telemetry
   if (now - lastTelemetryTime >= TELEMETRY_PERIOD) {
     sendTelemetry();
     lastTelemetryTime = now;
@@ -155,7 +130,6 @@ void processCommand(String cmd) {
 }
 
 void processMotorCommand(String params) {
-  // Parse: <left_pwm>,<right_pwm>
   int commaIdx = params.indexOf(',');
   if (commaIdx < 0) {
     Serial.println("E,2,Invalid motor command");
@@ -165,7 +139,6 @@ void processMotorCommand(String params) {
   int leftPWM = params.substring(0, commaIdx).toInt();
   int rightPWM = params.substring(commaIdx + 1).toInt();
 
-  // Clamp values
   leftPWM = constrain(leftPWM, -255, 255);
   rightPWM = constrain(rightPWM, -255, 255);
 
@@ -176,8 +149,6 @@ void processMotorCommand(String params) {
 }
 
 void processClawCommand(String params) {
-  // Parse: <servo_num>,<angle_degrees>
-  // servo_num 1 = rotation servo, 2 = gripper servo
   int commaIdx = params.indexOf(',');
   if (commaIdx < 0) {
     Serial.println("E,3,Invalid claw command");
@@ -203,7 +174,6 @@ void setMotors(int leftPWM, int rightPWM) {
   currentLeftPWM = leftPWM;
   currentRightPWM = rightPWM;
 
-  // Left motor
   if (leftPWM >= 0) {
     digitalWrite(LEFT_MOTOR_IN1, HIGH);
     digitalWrite(LEFT_MOTOR_IN2, LOW);
@@ -214,7 +184,6 @@ void setMotors(int leftPWM, int rightPWM) {
     analogWrite(LEFT_MOTOR_EN, -leftPWM);
   }
 
-  // Right motor
   if (rightPWM >= 0) {
     digitalWrite(RIGHT_MOTOR_IN1, HIGH);
     digitalWrite(RIGHT_MOTOR_IN2, LOW);
@@ -238,13 +207,10 @@ void stopMotors() {
 }
 
 void sendTelemetry() {
-  // Read battery voltage
-  // Assuming voltage divider: Vbat -> 10k -> A0 -> 10k -> GND
-  // So A0 reads Vbat/2
+  // Voltage divider: Vbat → 10k → A0 → 10k → GND, so A0 = Vbat/2
   int rawADC = analogRead(BATTERY_PIN);
-  int batteryMV = map(rawADC, 0, 1023, 0, 5000) * 2;  // x2 for voltage divider
+  int batteryMV = map(rawADC, 0, 1023, 0, 5000) * 2;
 
-  // Format: T,<battery_mv>,<left_enc>,<right_enc>,<estop>
   Serial.print("T,");
   Serial.print(batteryMV);
   Serial.print(",0,0,");

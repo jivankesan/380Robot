@@ -74,7 +74,6 @@ void control_thread(SharedState& state) {
         bool estop_active = hw_timeout || hw_estop || batt_low;
 
         if (estop_active) {
-            // Write zeros and signal FSM
             std::lock_guard<std::mutex> lk(state.mtx);
             state.motor_pwm_left  = 0;
             state.motor_pwm_right = 0;
@@ -98,7 +97,6 @@ void control_thread(SharedState& state) {
         double raw_omega = 0.0;
 
         if (mode == ControlMode::LINE_FOLLOW) {
-            // Track line-valid time
             if (line.valid) last_valid_line_time = Clock::now();
             double time_since_valid = duration_cast<duration<double>>(
                 Clock::now() - last_valid_line_time).count();
@@ -229,7 +227,6 @@ void control_thread(SharedState& state) {
             pwm_r = apply_min(pwm_r);
         }
 
-        // Clamp to hardware limits
         pwm_l = clamp_pwm(pwm_l, -MAX_PWM, MAX_PWM);
         pwm_r = clamp_pwm(pwm_r, -MAX_PWM, MAX_PWM);
 
@@ -240,7 +237,6 @@ void control_thread(SharedState& state) {
         }
     }
 
-    // Zero motors on exit
     {
         std::lock_guard<std::mutex> lk(state.mtx);
         state.motor_pwm_left  = 0;

@@ -1,13 +1,3 @@
-"""
-optimize.py - Differential-evolution optimizer for the line-follow controller.
-
-Runs the simulation with varying parameter sets, saves runs that reach past
-50% of the track, and uses scipy differential_evolution to search the space.
-
-Usage:
-    python3 optimize.py
-"""
-
 import os
 import sys
 import json
@@ -80,18 +70,6 @@ MAX_TIME = 30.0   # simulation timeout (s)
 
 
 def evaluate_run(history, lap_time, max_prog):
-    """
-    Compute a weighted scalar cost and diagnostics dict for one simulation run.
-
-    Cost components:
-      time_cost        - lap time, or extrapolated completion time for DNF.
-      tracking_cost    - RMS lateral/heading error, ITAE, and mean turn-phase e_lat.
-                         ITAE (integral of time-weighted absolute error) penalises
-                         persistent drift more than brief transients.
-      smoothness_cost  - angular-rate jerk + line-loss event count.
-      speed_cost       - penalty for low mean speed (0 if avg >= 0.5 m/s).
-      completion_penalty - sqrt-shaped DNF penalty; any complete run beats any DNF.
-    """
     progress = max_prog / total_track_pts
 
     t     = np.array(history['t'],     dtype=float)
@@ -107,7 +85,6 @@ def evaluate_run(history, lap_time, max_prog):
 
     dt = 0.01
 
-    # Time cost: actual lap time, or extrapolated (capped at 3× timeout for DNF)
     if lap_time is not None:
         time_cost = float(lap_time)
     else:
@@ -116,14 +93,13 @@ def evaluate_run(history, lap_time, max_prog):
         else:
             time_cost = 3.0 * MAX_TIME
 
-    # Tracking cost
     rms_lat = float(np.sqrt(np.mean(e_lat ** 2))) * 100        # cm
     rms_hdg = float(np.sqrt(np.mean(np.degrees(e_hdg) ** 2)))  # degrees
 
     # ITAE: ∫ t·|e_lat| dt, normalised so 1 cm steady-state error for 30 s → ~1.0
     itae = float(np.sum(t * np.abs(e_lat)) * dt) / (0.01 * MAX_TIME ** 2)
 
-    # Turn-specific error (|e_hdg| > 0.1 rad ≈ 5.7°); falls back to rms_lat if sparse
+    # |e_hdg| > 0.1 rad ≈ 5.7°; falls back to rms_lat if turn samples are sparse
     in_turn = np.abs(e_hdg) > 0.10
     if in_turn.sum() > 10:
         turn_lat = float(np.mean(np.abs(e_lat[in_turn]))) * 100
@@ -135,7 +111,6 @@ def evaluate_run(history, lap_time, max_prog):
                      0.40 * itae +
                      0.40 * turn_lat)
 
-    # Smoothness cost
     if len(omega) > 1:
         jerk      = float(np.mean(np.diff(omega) ** 2) / dt)
         jerk_norm = min(jerk / 50.0, 5.0)
@@ -145,17 +120,16 @@ def evaluate_run(history, lap_time, max_prog):
     loss_events = int(np.sum(np.diff(valid.astype(np.int8)) < 0)) if n > 1 else 0
     smoothness_cost = jerk_norm + 1.5 * loss_events
 
-    # Speed cost
     mean_speed = float(np.mean(v))
     speed_cost = max(0.0, 0.5 - mean_speed) * 8.0
 
-    # Completion penalty: sqrt shape keeps gradient toward finish non-zero at all progress
+    # sqrt shape keeps gradient toward finish non-zero at all progress levels
     if lap_time is not None:
         completion_penalty = 0.0
     else:
         completion_penalty = 30.0 * (1.0 - progress) ** 0.5
 
-    zeta_lat = zeta_hdg = 0.0   # filled by caller; placeholder for diagnostics
+    zeta_lat = zeta_hdg = 0.0
 
     cost = (2.0 * time_cost +
             0.5 * tracking_cost +

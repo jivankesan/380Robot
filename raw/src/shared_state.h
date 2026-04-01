@@ -1,7 +1,4 @@
-// shared_state.h – cross-thread data.
-//
-// One mutex covers everything. At these rates (100/50/20 Hz) lock
-// contention is negligible and a single lock keeps things simple.
+// One mutex covers everything. Contention at 100/50/20 Hz is negligible.
 #pragma once
 
 #include <atomic>

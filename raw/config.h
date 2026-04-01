@@ -1,4 +1,3 @@
-// config.h – all tunable parameters. Edit here and recompile.
 #pragma once
 
 // Serial
@@ -43,9 +42,9 @@ static constexpr double KD_HEADING = 8.0;
 static constexpr double BASE_SPEED_MPS = 0.50;
 static constexpr double MAX_LIN_VEL_MPS = 1.056;  // matches MOTOR_MAX_RPM
 static constexpr double MIN_LIN_VEL_MPS = 0.08;
-static constexpr double MAX_ANG_VEL_RPS = 2.5;     // was 1.6  – allow sharper corrections
-static constexpr double HEADING_BRAKE_GAIN = 2.0;  // was 1.5  – brake harder on curves
-static constexpr double TURN_SPEED_GAIN = 5.0;     // was 4.0
+static constexpr double MAX_ANG_VEL_RPS = 2.5;
+static constexpr double HEADING_BRAKE_GAIN = 2.0;
+static constexpr double TURN_SPEED_GAIN = 5.0;
 static constexpr double MIN_TURN_SPEED_MPS = 0.12;
 static constexpr double TURN_OMEGA_DEADBAND = 0.15;
 static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
@@ -54,11 +53,11 @@ static constexpr double LOST_LINE_TIMEOUT_S = 0.2;
 static constexpr double SP_V_MAX = 1.056;  // matches MAX_LIN_VEL_MPS
 static constexpr double SP_V_MIN = 0.1;
 static constexpr double SP_A_MAX_ACCEL = 3.0;
-static constexpr double SP_A_MAX_DECEL = 8.0;  // was 6.0  – brake faster into turns
-static constexpr double SP_ALPHA_MAX = 6.0;    // was 4.0  – angular rate can change faster
-static constexpr double SP_K_CURVATURE = 0.4;  // was 0.3
-static constexpr double SP_K_ERROR = 0.4;      // was 0.3
-static constexpr double SP_K_HEADING = 0.4;    // was 0.3
+static constexpr double SP_A_MAX_DECEL = 8.0;
+static constexpr double SP_ALPHA_MAX = 6.0;
+static constexpr double SP_K_CURVATURE = 0.4;
+static constexpr double SP_K_ERROR = 0.4;
+static constexpr double SP_K_HEADING = 0.4;
 
 // Post-drop safe params – switched in at runtime; tuned for the lighter return leg.
 static constexpr double RIGHT_MOTOR_GAIN_SAFE = 1.0;

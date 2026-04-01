@@ -86,7 +86,6 @@ static void apply_claw(int fd, ClawMode mode) {
     }
 }
 
-// Decode one telemetry line from the Arduino.
 static void parse_line(const std::string& line, SharedState& state) {
     if (line.empty()) return;
 
@@ -180,7 +179,6 @@ void serial_thread(SharedState& state) {
         std::this_thread::sleep_for(1ms);
     }
 
-    // Graceful shutdown
     if (fd >= 0) {
         send_motor(fd, 0, 0);
         close(fd);

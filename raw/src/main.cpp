@@ -1,10 +1,4 @@
-// main.cpp – entry point.
-//
-// Launches vision.py, binds the Unix socket it writes to, then spins up
-// four threads: vision_socket, serial, control, fsm.
-//
-// Usage: ./robot [camera_source]
-//   camera_source – index (0 → /dev/video0) or MJPEG URL; defaults to 0.
+// Usage: ./robot [camera_source]  (int index or MJPEG URL; default 0)
 
 #include "shared_state.h"
 #include "serial.h"
@@ -48,16 +42,13 @@ static void sigint_handler(int) {
     if (g_state_ptr) g_state_ptr->shutdown.store(true);
 }
 
-// Receives lines from vision.py via a Unix domain SOCK_DGRAM socket.
-// Protocol:
+// Vision socket protocol:
 //   LINE,<valid>,<lateral_m>,<heading_rad>,<curvature_1pm>
-//   DET,<cx>,<cy>,<w>,<h>,<score>
-//   LOCKED
-
+//   DET,<cx>,<cy>,<w>,<h>,<score>  |  NODET  |  LOCKED
+//   GREEN,<cx>,<cy>,<w>,<h>,<score>  |  NOGREEN
 static void parse_vision_message(const char* buf, SharedState& state) {
     std::string line(buf);
 
-    // Split by ','
     std::vector<std::string> tok;
     std::stringstream ss(line);
     std::string t;
@@ -139,7 +130,6 @@ static void vision_socket_thread(SharedState& state) {
         ssize_t n = recv(fd, buf, sizeof(buf) - 1, 0);
         if (n > 0) {
             buf[n] = '\0';
-            // Strip trailing newline/whitespace
             while (n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r' || buf[n-1] == ' '))
                 buf[--n] = '\0';
             try {
@@ -156,8 +146,7 @@ static void vision_socket_thread(SharedState& state) {
 }
 
 static pid_t launch_vision(const std::string& camera_src) {
-    // Use /proc/self/exe so we find vision.py relative to the binary,
-    // not the compile-time __FILE__ path (wrong on the Pi after cross-compile).
+    // Resolve relative to runtime binary, not compile-time __FILE__ (wrong after cross-compile).
     char exe_buf[4096] = {};
     ssize_t len = readlink("/proc/self/exe", exe_buf, sizeof(exe_buf) - 1);
     if (len < 0) {
@@ -166,7 +155,6 @@ static pid_t launch_vision(const std::string& camera_src) {
     }
     std::string exe_path(exe_buf, len);
 
-    // strip binary name → get parent dir
     size_t pos = exe_path.rfind('/');
     std::string base_dir = (pos != std::string::npos)
                            ? exe_path.substr(0, pos)
@@ -190,7 +178,6 @@ int main(int argc, char* argv[]) {
     SharedState state;
     g_state_ptr = &state;
 
-    // Register signal handler
     struct sigaction sa{};
     sa.sa_handler = sigint_handler;
     sigaction(SIGINT, &sa, nullptr);
@@ -200,7 +187,6 @@ int main(int argc, char* argv[]) {
     std::thread t_sock(vision_socket_thread, std::ref(state));
     std::this_thread::sleep_for(100ms);  // give socket thread time to bind
 
-    // Launch vision.py
     pid_t vision_pid = launch_vision(camera_src);
     if (vision_pid < 0) {
         std::cerr << "[main] fork failed – continuing without vision\n";
@@ -208,7 +194,6 @@ int main(int argc, char* argv[]) {
         std::cout << "[main] vision.py launched (pid=" << vision_pid << ")\n";
     }
 
-    // Start worker threads
     std::thread t_serial (serial_thread,  std::ref(state));
     std::thread t_control(control_thread, std::ref(state));
     std::thread t_fsm    (fsm_thread,     std::ref(state));

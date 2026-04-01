@@ -1,32 +1,10 @@
-"""
-Robot line-follow simulation — Python translation of control.cpp.
-
-Camera ROI covers 10–20 cm ahead of the wheel centre (top half of frame).
-e_lat: mean lateral offset of track centroids in the ROI, + = line to robot's right.
-e_hdg: arctan2(far_centroid – near_centroid, LOOK_SPAN/2), + = track turning right.
-Dynamics: unicycle model, Euler integration at 100 Hz.
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.gridspec import GridSpec
 
-# Robot physical parameters
-#   mass   = 0.500 kg
-#   length = 0.20 m  (caster front, LiPo rear)
-#   width  = 0.15 m  (wheel-to-wheel)
-#   CoM    ≈ at wheel axle
-#
-# Yaw inertia through wheel axle:
-#   LiPo  0.12 kg × (0.05 m)²          = 0.000300
-#   body  0.18 kg × (0.06 m)²          = 0.000648
-#   caster 0.08 kg × (0.15 m)²         = 0.001800
-#   misc  0.04 kg × (0.05 m)²          = 0.000100
-#   wheels 2×0.04 kg × (0.075 m)²      = 0.000450
-#   Total I_yaw ≈ 0.003 kg·m²
 ROBOT_MASS  = 0.500   # kg
-ROBOT_I_YAW = 0.003   # kg·m²
+ROBOT_I_YAW = 0.003   # kg·m²  (estimated from component breakdown)
 MOTOR_F_MAX = 2.0     # N per wheel
 
 # Track geometry
@@ -134,16 +112,8 @@ def build_course():
 
 
 def compute_errors(rx, ry, rh, track_pts, prog_idx):
-    """
-    Simulate camera line-detection output.
-
-    Uses arc distance along the track rather than straight-line projection to
-    avoid the corner-peeking artifact (heading projection exposes the upcoming
-    arc before the robot physically reaches the tile seam).
-
-    Mirrors the two-half centroid logic in vision.py.
-    Returns (e_lat [m], e_hdg [rad], valid).
-    """
+    # Arc-distance lookup avoids corner-peeking (straight projection sees the next
+    # tile before the robot reaches the seam). Mirrors vision.py two-half centroid logic.
     i_near = prog_idx + IDX_NEAR
     i_mid  = prog_idx + IDX_MID
     i_far  = prog_idx + IDX_FAR
@@ -224,18 +194,8 @@ class SpeedProfiler:
 
 
 class RobotDynamics:
-    """
-    Differential-drive plant with mass and yaw inertia.
-
-    Converts desired (v_cmd, omega_cmd) to actual (v, omega) by computing the
-    required wheel forces, clamping to motor limits, and integrating F=ma / τ=Iα.
-
-        F_R = m·Δv/(2·dt) + I·Δω/(L·dt)
-        F_L = m·Δv/(2·dt) − I·Δω/(L·dt)
-
-    The shared force budget means hard braking into a turn limits available angular
-    acceleration, matching real-hardware behaviour that a pure kinematic model misses.
-    """
+    # F=ma / τ=Iα with motor force limits. Shared force budget couples braking and
+    # turning, which a pure kinematic model misses.
 
     def __init__(self):
         self.v     = 0.0
@@ -266,7 +226,6 @@ class RobotDynamics:
 
 
 def find_progress(rx, ry, track_pts, last_idx, search_ahead=200):
-    """Local nearest-point search, constrained to always advance along the track."""
     start = max(0, last_idx - 5)
     end   = min(len(track_pts), last_idx + search_ahead)
     seg   = track_pts[start:end]
@@ -276,10 +235,7 @@ def find_progress(rx, ry, track_pts, last_idx, search_ahead=200):
 
 
 def simulate(params=None, max_time=30.0, dt=0.01, crash_limit=0.13):
-    """
-    Run one lap with the given parameter dict.
-    Returns (lap_time, history, max_prog_idx). lap_time is None on crash or timeout.
-    """
+    # Returns (lap_time, history, max_prog_idx). lap_time is None on crash/timeout.
     p = DEFAULT_PARAMS.copy()
     if params:
         p.update(params)

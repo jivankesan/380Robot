@@ -1,29 +1,4 @@
 #!/usr/bin/env python3
-"""
-vision.py – threaded line detector + blue circle detector.
-
-Thread layout:
-  capture_thread  – reads frames from camera into a shared FrameBuffer.
-                    VideoCapture is not thread-safe so it lives here alone.
-  line_thread     – grabs latest frame, runs red-line detection at LINE_RATE_HZ.
-  object_thread   – grabs latest frame, runs blue-circle detection at OBJECT_RATE_HZ.
-
-Both detector threads call OpenCV / NumPy which release the GIL during their
-C-extension work, so they genuinely run in parallel on separate cores.
-
-Results are sent to the C++ process via a Unix domain SOCK_DGRAM socket.
-
-Protocol (one ASCII datagram per message):
-  LINE,<valid 0/1>,<lateral_error_m>,<heading_error_rad>,<curvature_1pm>
-  DET,<cx>,<cy>,<w>,<h>,<score>       -- blue circle found (normalised coords)
-  NODET                                -- no circle this frame
-  LOCKED                               -- one-shot: full circle confirmed in frame
-
-Usage:
-  python3 vision.py [camera_source]
-  camera_source: int (0 = /dev/video0) or MJPEG URL. Default: 0.
-"""
-
 import socket
 import subprocess
 import sys
@@ -32,8 +7,6 @@ import time
 
 import cv2
 import numpy as np
-
-# ── Config ────────────────────────────────────────────────────────────────────
 
 SOCKET_PATH = "/tmp/robot_vision.sock"
 
@@ -74,10 +47,7 @@ CAM_FPS = 60
 LINE_RATE_HZ   = 60.0   # match camera framerate – faster corrections
 OBJECT_RATE_HZ = 15.0
 
-# ── Shared frame buffer ────────────────────────────────────────────────────────
-
 class FrameBuffer:
-    """Holds the most recent camera frame. Thread-safe."""
     def __init__(self):
         self._lock  = threading.Lock()
         self._frame = None          # latest BGR frame (numpy array)
@@ -89,15 +59,11 @@ class FrameBuffer:
         self._ready.set()
 
     def get(self):
-        """Block until at least one frame is available, then return a copy."""
         self._ready.wait()
         with self._lock:
             return self._frame.copy()
 
-# ── Socket helper ─────────────────────────────────────────────────────────────
-
 class VisionSocket:
-    """Thin wrapper around a SOCK_DGRAM Unix socket. Thread-safe (sendto is atomic)."""
     def __init__(self):
         self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
 
@@ -106,11 +72,6 @@ class VisionSocket:
             self._sock.sendto(msg.encode(), SOCKET_PATH)
         except Exception:
             pass  # C++ side may not be ready yet; just drop
-
-# ── Capture thread ────────────────────────────────────────────────────────────
-# Two implementations:
-#   capture_thread_picam – rpicam-vid pipe (Pi camera, never blocks on open)
-#   capture_thread_cv    – OpenCV VideoCapture (MJPEG URLs / generic sources)
 
 def capture_thread_picam(buf: FrameBuffer, stop: threading.Event):
     frame_bytes = CAM_W * CAM_H * 3 // 2  # YUV420 = W*H*1.5 bytes per frame
@@ -148,10 +109,7 @@ def capture_thread_cv(cap: cv2.VideoCapture, buf: FrameBuffer, stop: threading.E
             print("[capture] WARN: frame read failed")
             time.sleep(0.02)
 
-# ── Line detection ────────────────────────────────────────────────────────────
-
 def _run_line_detection(frame) -> str:
-    """Pure function: frame → protocol string. Releases GIL in OpenCV calls."""
     h, w = frame.shape[:2]
 
     y0 = int(h * LINE_ROI_Y_START);  y1 = int(h * LINE_ROI_Y_END)
@@ -204,10 +162,7 @@ def line_thread(buf: FrameBuffer, sock: VisionSocket, stop: threading.Event):
         if sleep_s > 0:
             time.sleep(sleep_s)
 
-# ── Object detection ──────────────────────────────────────────────────────────
-
 def _run_object_detection(frame):
-    """Returns DET message string if any blue blob found in top half, else NODET."""
     h, w = frame.shape[:2]
 
     y0  = int(h * OBJ_ROI_Y_START)
@@ -249,7 +204,6 @@ def _run_object_detection(frame):
 
 
 def _run_green_detection(frame):
-    """Returns GREEN message using centroid of all green pixels combined, else NOGREEN."""
     h, w = frame.shape[:2]
 
     y1  = int(h * GREEN_ROI_Y_END)
@@ -314,8 +268,6 @@ def object_thread(buf: FrameBuffer, sock: VisionSocket, stop: threading.Event):
         if sleep_s > 0:
             time.sleep(sleep_s)
 
-# ── Entry point ───────────────────────────────────────────────────────────────
-
 def main():
     camera_src = sys.argv[1] if len(sys.argv) > 1 else "0"
     try:
@@ -327,8 +279,7 @@ def main():
     sock = VisionSocket()
     stop = threading.Event()
 
-    # Pi camera (integer index) → rpicam-vid pipe (no blocking open, no GStreamer deps)
-    # URL / MJPEG stream        → OpenCV VideoCapture
+    # Integer → rpicam-vid pipe; URL → OpenCV VideoCapture
     if isinstance(camera_src, int):
         cap = None
         cap_t = threading.Thread(target=capture_thread_picam, args=(buf, stop),
